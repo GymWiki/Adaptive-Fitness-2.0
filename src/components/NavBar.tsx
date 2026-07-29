@@ -24,6 +24,9 @@ export function NavBar() {
           <NavLink to="/app/history" className={linkClasses}>
             Geschiedenis
           </NavLink>
+          <NavLink to="/app/plan" className={linkClasses}>
+            Schema
+          </NavLink>
         </div>
         <button
           onClick={() => signOut()}

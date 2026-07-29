@@ -8,6 +8,7 @@ import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { LogWorkout } from './pages/LogWorkout'
 import { History } from './pages/History'
+import { PlanGenerator } from './pages/PlanGenerator'
 
 function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -47,6 +48,14 @@ function App() {
               element={
                 <AppLayout>
                   <History />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/app/plan"
+              element={
+                <AppLayout>
+                  <PlanGenerator />
                 </AppLayout>
               }
             />
