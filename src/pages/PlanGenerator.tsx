@@ -1,19 +1,85 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { generateProgram } from '../lib/programGenerator'
 import type { Equipment, ExperienceLevel, WeekProgram } from '../lib/programGenerator'
 import { EQUIPMENT_LABELS, EXPERIENCE_LABELS } from '../lib/labels'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Select } from '../components/ui/Input'
+import { ErrorState } from '../components/ui/States'
+import { useAuth } from '../contexts/AuthContext'
+import { useProfile } from '../hooks/useProfile'
+import { supabase } from '../lib/supabase'
+
+type GeneratedParams = {
+  daysPerWeek: number
+  equipment: Equipment
+  experienceLevel: ExperienceLevel
+}
 
 export function PlanGenerator() {
+  const { user } = useAuth()
+  const { profile, loading: profileLoading } = useProfile()
+
+  const navigate = useNavigate()
   const [daysPerWeek, setDaysPerWeek] = useState(4)
   const [equipment, setEquipment] = useState<Equipment>('full_gym')
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate')
   const [program, setProgram] = useState<WeekProgram | null>(null)
+  const [generatedParams, setGeneratedParams] = useState<GeneratedParams | null>(null)
+
+  const [confirmingAdopt, setConfirmingAdopt] = useState(false)
+  const [adopting, setAdopting] = useState(false)
+  const [adopted, setAdopted] = useState(false)
+  const [adoptError, setAdoptError] = useState('')
+
+  // Pre-fill the form with the user's current active schema, if they have one.
+  useEffect(() => {
+    if (profile?.days_per_week && profile.equipment && profile.experience_level) {
+      setDaysPerWeek(profile.days_per_week)
+      setEquipment(profile.equipment)
+      setExperienceLevel(profile.experience_level)
+    }
+  }, [profile])
 
   function handleGenerate() {
     setProgram(generateProgram(daysPerWeek, equipment, experienceLevel))
+    setGeneratedParams({ daysPerWeek, equipment, experienceLevel })
+    setConfirmingAdopt(false)
+    setAdopted(false)
+    setAdoptError('')
+  }
+
+  const isActiveSchema =
+    !!profile &&
+    !!generatedParams &&
+    profile.days_per_week === generatedParams.daysPerWeek &&
+    profile.equipment === generatedParams.equipment &&
+    profile.experience_level === generatedParams.experienceLevel
+
+  async function handleAdopt() {
+    if (!user || !generatedParams) return
+    setAdopting(true)
+    setAdoptError('')
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        days_per_week: generatedParams.daysPerWeek,
+        equipment: generatedParams.equipment,
+        experience_level: generatedParams.experienceLevel,
+      })
+      .eq('id', user.id)
+
+    if (error) {
+      setAdoptError('Overnemen is mislukt. Probeer opnieuw.')
+      setAdopting(false)
+      return
+    }
+
+    setAdopting(false)
+    setConfirmingAdopt(false)
+    setAdopted(true)
   }
 
   return (
@@ -66,12 +132,61 @@ export function PlanGenerator() {
         Genereer schema
       </Button>
 
-      {program && (
+      {program && generatedParams && (
         <div className="mt-8 flex flex-col gap-4">
           <div>
             <h2 className="font-display text-lg font-bold text-ink">{program.templateName}</h2>
             <p className="text-xs text-ink-faint">Bron: {program.source}</p>
           </div>
+
+          {!profileLoading && (
+            <Card>
+              {isActiveSchema ? (
+                <p className="text-sm font-semibold text-accent">
+                  ✓ Dit is je huidige actieve schema.
+                </p>
+              ) : adopted ? (
+                <p className="text-sm font-semibold text-accent">
+                  ✓ Overgenomen! Dit is nu je actieve schema op het dashboard.
+                </p>
+              ) : confirmingAdopt ? (
+                <div>
+                  <p className="text-sm text-ink">
+                    Dit vervangt je huidige actieve schema op het dashboard. Weet je het zeker?
+                  </p>
+                  {adoptError && (
+                    <div className="mt-3">
+                      <ErrorState message={adoptError} />
+                    </div>
+                  )}
+                  <div className="mt-3 flex gap-2">
+                    <Button variant="secondary" onClick={() => setConfirmingAdopt(false)}>
+                      Annuleren
+                    </Button>
+                    <Button onClick={handleAdopt} disabled={adopting} fullWidth>
+                      {adopting ? 'Bezig...' : 'Ja, vervang mijn schema'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-ink-dim">
+                    Nog niet je actieve schema — de dag-slider op je dashboard volgt dit pas als je
+                    het overneemt.
+                  </p>
+                  <Button size="sm" onClick={() => setConfirmingAdopt(true)} className="shrink-0">
+                    Neem over
+                  </Button>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {adopted && (
+            <Button variant="secondary" onClick={() => navigate('/app')} fullWidth>
+              Naar dashboard
+            </Button>
+          )}
 
           {program.experienceWarning && (
             <p className="rounded-lg bg-warning/15 px-3 py-2 text-xs text-warning">
