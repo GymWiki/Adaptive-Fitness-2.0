@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { ExercisePicker } from '../components/ExercisePicker'
@@ -28,7 +28,9 @@ const RIR_OPTIONS = ['0', '1', '2', '3', '4+']
 export function LogWorkout() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [name, setName] = useState('')
+  const location = useLocation()
+  const prefillName = (location.state as { workoutName?: string } | null)?.workoutName ?? ''
+  const [name, setName] = useState(prefillName)
   const [sets, setSets] = useState<DraftSet[]>([emptySet()])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

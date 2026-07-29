@@ -5,6 +5,7 @@ import type { Workout } from '../lib/types'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
+import { ActiveProgramPanel } from '../components/ActiveProgramPanel'
 
 export function Dashboard() {
   const [workouts, setWorkouts] = useState<Workout[]>([])
@@ -33,6 +34,8 @@ export function Dashboard() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      <ActiveProgramPanel />
+
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold">Jouw workouts</h1>
         <Link to="/app/log">
