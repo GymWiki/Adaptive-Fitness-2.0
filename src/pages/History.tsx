@@ -15,7 +15,7 @@ export function History() {
     setLoading(true)
     const { data } = await supabase
       .from('workouts')
-      .select('id, name, performed_at, workout_sets(id, weight_kg, reps, set_order, exercise:exercises(id, name, muscle_group))')
+      .select('id, name, performed_at, workout_sets(id, weight_kg, reps, rir, set_order, exercise:exercises(id, name, muscle_group))')
       .order('performed_at', { ascending: false })
     if (data) setWorkouts(data as unknown as Workout[])
     setLoading(false)
@@ -72,7 +72,7 @@ export function History() {
                       >
                         <span>{set.exercise?.name ?? 'Oefening'}</span>
                         <span>
-                          {set.weight_kg} kg × {set.reps}
+                          {set.weight_kg} kg × {set.reps} · RIR {set.rir}
                         </span>
                       </li>
                     ))}

@@ -6,9 +6,13 @@ import type { Exercise } from '../lib/types'
 type Props = {
   value: string
   onChange: (exerciseId: string) => void
+  onSelectExercise?: (exercise: Exercise) => void
 }
 
-export function ExercisePicker({ value, onChange }: Props) {
+const EXERCISE_COLUMNS =
+  'id, name, muscle_group, kind, rep_range_min, rep_range_max, target_rir_min, target_rir_max'
+
+export function ExercisePicker({ value, onChange, onSelectExercise }: Props) {
   const { user } = useAuth()
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [showAdd, setShowAdd] = useState(false)
@@ -19,10 +23,7 @@ export function ExercisePicker({ value, onChange }: Props) {
   }, [])
 
   async function loadExercises() {
-    const { data } = await supabase
-      .from('exercises')
-      .select('id, name, muscle_group')
-      .order('name')
+    const { data } = await supabase.from('exercises').select(EXERCISE_COLUMNS).order('name')
     if (data) setExercises(data)
   }
 
@@ -31,14 +32,21 @@ export function ExercisePicker({ value, onChange }: Props) {
     const { data, error } = await supabase
       .from('exercises')
       .insert({ name: newName.trim(), user_id: user.id })
-      .select('id, name, muscle_group')
+      .select(EXERCISE_COLUMNS)
       .single()
     if (!error && data) {
       setExercises((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
       onChange(data.id)
+      onSelectExercise?.(data)
       setNewName('')
       setShowAdd(false)
     }
+  }
+
+  function handleSelect(exerciseId: string) {
+    onChange(exerciseId)
+    const exercise = exercises.find((ex) => ex.id === exerciseId)
+    if (exercise) onSelectExercise?.(exercise)
   }
 
   return (
@@ -49,7 +57,7 @@ export function ExercisePicker({ value, onChange }: Props) {
           if (e.target.value === '__add__') {
             setShowAdd(true)
           } else {
-            onChange(e.target.value)
+            handleSelect(e.target.value)
           }
         }}
         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"

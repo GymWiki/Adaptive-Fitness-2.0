@@ -28,6 +28,11 @@ export type Database = {
           name: string
           muscle_group: string | null
           created_at: string
+          kind: 'compound' | 'isolation'
+          rep_range_min: number
+          rep_range_max: number
+          target_rir_min: number
+          target_rir_max: number
         }
         Insert: {
           id?: string
@@ -35,6 +40,11 @@ export type Database = {
           name: string
           muscle_group?: string | null
           created_at?: string
+          kind?: 'compound' | 'isolation'
+          rep_range_min?: number
+          rep_range_max?: number
+          target_rir_min?: number
+          target_rir_max?: number
         }
         Update: {
           id?: string
@@ -42,6 +52,11 @@ export type Database = {
           name?: string
           muscle_group?: string | null
           created_at?: string
+          kind?: 'compound' | 'isolation'
+          rep_range_min?: number
+          rep_range_max?: number
+          target_rir_min?: number
+          target_rir_max?: number
         }
         Relationships: []
       }
@@ -77,6 +92,7 @@ export type Database = {
           set_order: number
           weight_kg: number
           reps: number
+          rir: number
           created_at: string
         }
         Insert: {
@@ -86,6 +102,7 @@ export type Database = {
           set_order?: number
           weight_kg: number
           reps: number
+          rir: number
           created_at?: string
         }
         Update: {
@@ -95,6 +112,7 @@ export type Database = {
           set_order?: number
           weight_kg?: number
           reps?: number
+          rir?: number
           created_at?: string
         }
         Relationships: [

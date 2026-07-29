@@ -3,17 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { ExercisePicker } from '../components/ExercisePicker'
+import { ExerciseAdvice } from '../components/ExerciseAdvice'
+import type { Exercise } from '../lib/types'
 
 type DraftSet = {
   key: string
   exerciseId: string
+  exercise: Exercise | null
   weight: string
   reps: string
+  rir: string
 }
 
 function emptySet(): DraftSet {
-  return { key: crypto.randomUUID(), exerciseId: '', weight: '', reps: '' }
+  return { key: crypto.randomUUID(), exerciseId: '', exercise: null, weight: '', reps: '', rir: '' }
 }
+
+const RIR_OPTIONS = ['0', '1', '2', '3', '4+']
 
 export function LogWorkout() {
   const { user } = useAuth()
@@ -37,9 +43,11 @@ export function LogWorkout() {
 
   async function handleSave() {
     if (!user) return
-    const validSets = sets.filter((s) => s.exerciseId && s.weight !== '' && s.reps !== '')
+    const validSets = sets.filter(
+      (s) => s.exerciseId && s.weight !== '' && s.reps !== '' && s.rir !== '',
+    )
     if (validSets.length === 0) {
-      setError('Voeg minstens één complete set toe (oefening, gewicht en herhalingen).')
+      setError('Voeg minstens één complete set toe (oefening, gewicht, herhalingen en RIR).')
       return
     }
 
@@ -64,6 +72,7 @@ export function LogWorkout() {
       set_order: index + 1,
       weight_kg: Number(s.weight),
       reps: Number(s.reps),
+      rir: s.rir === '4+' ? 4 : Number(s.rir),
     }))
 
     const { error: setsError } = await supabase.from('workout_sets').insert(rows)
@@ -108,7 +117,9 @@ export function LogWorkout() {
               <ExercisePicker
                 value={set.exerciseId}
                 onChange={(id) => updateSet(set.key, { exerciseId: id })}
+                onSelectExercise={(exercise) => updateSet(set.key, { exercise })}
               />
+              {set.exercise && <ExerciseAdvice exercise={set.exercise} />}
             </div>
             <div className="mt-2 flex gap-2">
               <input
@@ -119,7 +130,7 @@ export function LogWorkout() {
                 placeholder="Gewicht (kg)"
                 value={set.weight}
                 onChange={(e) => updateSet(set.key, { weight: e.target.value })}
-                className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
               <input
                 type="number"
@@ -128,8 +139,22 @@ export function LogWorkout() {
                 placeholder="Herhalingen"
                 value={set.reps}
                 onChange={(e) => updateSet(set.key, { reps: e.target.value })}
-                className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
+              <select
+                value={set.rir}
+                onChange={(e) => updateSet(set.key, { rir: e.target.value })}
+                className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              >
+                <option value="" disabled>
+                  RIR
+                </option>
+                {RIR_OPTIONS.map((rir) => (
+                  <option key={rir} value={rir}>
+                    RIR {rir}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         ))}
