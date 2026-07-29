@@ -8,16 +8,40 @@ export type Database = {
           id: string
           display_name: string | null
           created_at: string
+          weight_kg: number | null
+          height_cm: number | null
+          gender: 'male' | 'female' | 'other' | null
+          birth_year: number | null
+          days_per_week: number | null
+          equipment: 'full_gym' | 'home_dumbbells' | 'bodyweight_only' | null
+          experience_level: 'beginner' | 'intermediate' | 'advanced' | null
+          onboarding_completed: boolean
         }
         Insert: {
           id: string
           display_name?: string | null
           created_at?: string
+          weight_kg?: number | null
+          height_cm?: number | null
+          gender?: 'male' | 'female' | 'other' | null
+          birth_year?: number | null
+          days_per_week?: number | null
+          equipment?: 'full_gym' | 'home_dumbbells' | 'bodyweight_only' | null
+          experience_level?: 'beginner' | 'intermediate' | 'advanced' | null
+          onboarding_completed?: boolean
         }
         Update: {
           id?: string
           display_name?: string | null
           created_at?: string
+          weight_kg?: number | null
+          height_cm?: number | null
+          gender?: 'male' | 'female' | 'other' | null
+          birth_year?: number | null
+          days_per_week?: number | null
+          equipment?: 'full_gym' | 'home_dumbbells' | 'bodyweight_only' | null
+          experience_level?: 'beginner' | 'intermediate' | 'advanced' | null
+          onboarding_completed?: boolean
         }
         Relationships: []
       }
