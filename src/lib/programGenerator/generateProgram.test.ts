@@ -1,111 +1,111 @@
 import { describe, expect, it } from 'vitest'
 import { generateProgram } from './generateProgram'
-import { enforceRestDayAndSpacing, findUnderTrainedMuscleGroups } from './rules'
-import { applyExperienceLevelSplit } from './splitSchedules'
+import { getTemplate, TEMPLATES } from './templates'
+import { availablePatterns, EXERCISE_CATALOG } from './catalog'
 import { MUSCLE_GROUPS } from './types'
 import type { Equipment, ExperienceLevel } from './types'
-import { availablePatterns } from './catalog'
 
-const DAYS = [2, 3, 4, 5, 6] as const
+const DAYS = [1, 2, 3, 4, 5, 6, 7] as const
 const EQUIPMENT_PROFILES: Equipment[] = ['full_gym', 'home_dumbbells', 'bodyweight_only']
 const EXPERIENCE_LEVELS: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced']
 
-describe('program generator catalog', () => {
+describe('program templates catalog', () => {
   it('has at least one bodyweight_only exercise for every muscle group', () => {
     for (const muscleGroup of MUSCLE_GROUPS) {
       expect(availablePatterns(muscleGroup, 'bodyweight_only').length).toBeGreaterThan(0)
     }
   })
+
+  it('every template exercise references a real catalog pattern', () => {
+    for (const daysPerWeek of DAYS) {
+      const template = getTemplate(daysPerWeek)
+      for (const day of template.week) {
+        if (day.type !== 'training') continue
+        for (const exercise of day.exercises) {
+          const pattern = EXERCISE_CATALOG.find((p) => p.id === exercise.patternId)
+          expect(pattern, `unknown pattern id ${exercise.patternId}`).toBeDefined()
+        }
+      }
+    }
+  })
 })
 
-describe.each(EXPERIENCE_LEVELS)('experience level: %s', (experienceLevel) => {
-  describe.each(DAYS)('%i days/week', (daysPerWeek) => {
-    it('never gives beginners an isolated push/pull/legs split', () => {
-      const schedule = applyExperienceLevelSplit(daysPerWeek, experienceLevel)
-      const hasPPL = schedule.some((slot) => slot === 'push' || slot === 'pull' || slot === 'legs')
-      if (experienceLevel === 'beginner') {
-        expect(hasPPL).toBe(false)
-      }
-    })
+describe('7 days/week template', () => {
+  it('has exactly 6 training days and 1 active_recovery day, never 7 full sessions', () => {
+    const template = TEMPLATES[7]
+    const trainingDays = template.week.filter((day) => day.type === 'training')
+    const recoveryDays = template.week.filter((day) => day.type === 'active_recovery')
+    const restDays = template.week.filter((day) => day.type === 'rest')
 
-    it('trains exactly the requested number of active days', () => {
-      const schedule = applyExperienceLevelSplit(daysPerWeek, experienceLevel)
-      const activeDays = schedule.filter((slot) => slot !== 'rest')
-      expect(activeDays).toHaveLength(daysPerWeek)
-    })
+    expect(trainingDays).toHaveLength(6)
+    expect(recoveryDays).toHaveLength(1)
+    expect(restDays).toHaveLength(0)
+    expect(template.week).toHaveLength(7)
+  })
 
-    it('never exceeds 6 active days and always has at least 1 rest day', () => {
-      const schedule = applyExperienceLevelSplit(daysPerWeek, experienceLevel)
-      const activeDays = schedule.filter((slot) => slot !== 'rest')
-      expect(activeDays.length).toBeLessThanOrEqual(6)
-      expect(schedule.length - activeDays.length).toBeGreaterThanOrEqual(1)
-    })
+  it('carries a disclaimer explaining the active recovery day is not a 7th training day', () => {
+    expect(TEMPLATES[7].disclaimer).toBeTruthy()
+    expect(TEMPLATES[7].disclaimer).toContain('hersteldag')
+  })
+})
 
-    it('never trains the same muscle group on two consecutive days', () => {
-      const schedule = applyExperienceLevelSplit(daysPerWeek, experienceLevel)
-      expect(() => enforceRestDayAndSpacing(schedule)).not.toThrow()
-    })
+describe('1 day/week template', () => {
+  it('flags itself as a less mainstream approach', () => {
+    expect(TEMPLATES[1].disclaimer).toBeTruthy()
+  })
+})
 
-    it('trains every major muscle group at least 2x/week', () => {
-      const schedule = applyExperienceLevelSplit(daysPerWeek, experienceLevel)
-      expect(findUnderTrainedMuscleGroups(schedule)).toEqual([])
-    })
+describe.each(DAYS)('%i days/week', (daysPerWeek) => {
+  it('is a fixed template: identical output on repeated calls, not a variable generation', () => {
+    const first = generateProgram(daysPerWeek, 'full_gym', 'intermediate')
+    const second = generateProgram(daysPerWeek, 'full_gym', 'intermediate')
+    expect(second).toEqual(first)
+  })
 
-    describe.each(EQUIPMENT_PROFILES)('equipment: %s', (equipment) => {
-      it('produces a program executable entirely within the chosen equipment tier', () => {
-        const program = generateProgram(daysPerWeek, equipment, experienceLevel)
+  it('has exactly 7 days in the week', () => {
+    const program = generateProgram(daysPerWeek, 'full_gym', 'intermediate')
+    expect(program.week).toHaveLength(7)
+  })
 
-        for (const day of program.week) {
-          if (day.type === 'rest') continue
-
-          for (const exercise of day.exercises) {
-            const pattern = availablePatterns(exercise.muscleGroup, equipment).find(
-              (p) => p.id === exercise.patternId,
-            )
-            expect(pattern, `pattern ${exercise.patternId} should exist and support ${equipment}`).toBeDefined()
-
-            // Independently re-derive the expected name from the fallback chain
-            // (own tier, else the next-lower tier) rather than re-calling the
-            // function under test, so this actually catches fallback bugs.
-            const expectedName =
-              equipment === 'bodyweight_only'
-                ? pattern!.variants.bodyweight_only
-                : equipment === 'home_dumbbells'
-                  ? (pattern!.variants.home_dumbbells ?? pattern!.variants.bodyweight_only)
-                  : (pattern!.variants.full_gym ??
-                    pattern!.variants.home_dumbbells ??
-                    pattern!.variants.bodyweight_only)
-            expect(exercise.name).toBe(expectedName)
-          }
-        }
-      })
-
-      it('never leaves a muscle group completely untrained due to equipment limitations', () => {
-        const program = generateProgram(daysPerWeek, equipment, experienceLevel)
-        const trainedGroups = new Set(
-          program.week.flatMap((day) =>
-            day.type === 'training' ? day.exercises.map((e) => e.muscleGroup) : [],
-          ),
-        )
-        const scheduleGroups = new Set(
-          program.week.flatMap((day) => (day.type === 'training' ? [day.focus] : [])),
-        )
-        // Every muscle group the schedule intends to train that day actually has an exercise.
-        expect(scheduleGroups.size).toBeGreaterThan(0)
-        expect(trainedGroups.size).toBeGreaterThan(0)
-      })
-
-      it('includes a warm-up note and full-ROM/double-progression guidance on every training day', () => {
+  describe.each(EQUIPMENT_PROFILES)('equipment: %s', (equipment) => {
+    describe.each(EXPERIENCE_LEVELS)('experience: %s', (experienceLevel) => {
+      it('resolves every exercise to a concrete, equipment-appropriate name', () => {
         const program = generateProgram(daysPerWeek, equipment, experienceLevel)
         for (const day of program.week) {
           if (day.type !== 'training') continue
-          expect(day.warmup).toBeTruthy()
           for (const exercise of day.exercises) {
-            expect(exercise.rangeOfMotion).toBe('full')
-            expect(exercise.progression).toBe('double-progression')
+            const pattern = EXERCISE_CATALOG.find((p) => p.id === exercise.patternId)!
+            const expectedName =
+              equipment === 'bodyweight_only'
+                ? pattern.variants.bodyweight_only
+                : equipment === 'home_dumbbells'
+                  ? (pattern.variants.home_dumbbells ?? pattern.variants.bodyweight_only)
+                  : (pattern.variants.full_gym ??
+                    pattern.variants.home_dumbbells ??
+                    pattern.variants.bodyweight_only)
+            expect(exercise.name).toBe(expectedName)
+            expect(exercise.sets).toBeGreaterThan(0)
           }
         }
       })
     })
+  })
+
+  it('only warns beginners away from high-frequency templates, never intermediate/advanced', () => {
+    const beginner = generateProgram(daysPerWeek, 'full_gym', 'beginner')
+    const advanced = generateProgram(daysPerWeek, 'full_gym', 'advanced')
+    expect(advanced.experienceWarning).toBeNull()
+    if (daysPerWeek >= 5) {
+      expect(beginner.experienceWarning).toBeTruthy()
+    } else {
+      expect(beginner.experienceWarning).toBeNull()
+    }
+  })
+})
+
+describe('generateProgram input validation', () => {
+  it('rejects day counts outside 1-7', () => {
+    expect(() => generateProgram(0, 'full_gym', 'beginner')).toThrow()
+    expect(() => generateProgram(8, 'full_gym', 'beginner')).toThrow()
   })
 })

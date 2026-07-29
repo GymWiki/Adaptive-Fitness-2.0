@@ -1,58 +1,41 @@
-import { availablePatterns, substituteForEquipment } from './catalog'
-import { applyExperienceLevelSplit } from './splitSchedules'
-import { enforceRestDayAndSpacing, ensureMinimumMuscleGroupFrequency } from './rules'
-import { FOCUS_MUSCLE_GROUPS } from './types'
+import { EXERCISE_CATALOG, substituteForEquipment } from './catalog'
+import { getTemplate } from './templates'
+import { getExperienceWarning } from './experienceWarning'
 import type {
-  DayFocus,
   DaySlot,
   Equipment,
   ExperienceLevel,
   PlannedExercise,
+  TemplateExercisePrescription,
   WeekProgram,
 } from './types'
 
-const DELOAD_EVERY_WEEKS = 5 // every 4-6 weeks — Lorenz & Morrison (2015)
-const WARMUP_NOTE = 'Begin met 1-2 lichte opbouwsets vóór je werkgewicht.'
-
-const PROGRAM_NOTES = [
+const GLOBAL_NOTES = [
   'Volledige bewegingsuitslag (ROM), tenzij een blessure of beperking dat uitsluit (Wolf et al., 2023).',
   'Dubbele progressie: verhoog eerst de herhalingen binnen de range, pas daarna het gewicht (Schoenfeld, Ogborn & Krieger, 2017; Pelland et al., 2024).',
-  `Las elke 4-6 weken een deload-week in met verlaagd volume/intensiteit (Lorenz & Morrison, 2015).`,
+  'Las elke 4-6 weken een deload-week in met verlaagd volume/intensiteit (Lorenz & Morrison, 2015).',
 ]
 
-/** Compound lifts lean strength-oriented; isolation work leans hypertrophy-oriented (Refalo et al., 2024). */
-function setsRepsRestFor(kind: 'compound' | 'isolation') {
-  return kind === 'compound'
-    ? { sets: 3, reps: '6-10', restSeconds: '120-180' }
-    : { sets: 3, reps: '10-15', restSeconds: '60-90' }
-}
-
-function buildSessionExercises(focus: DayFocus, equipment: Equipment): PlannedExercise[] {
-  const exercisesPerMuscleGroup = focus === 'full_body' ? 1 : 2
-  const exercises: PlannedExercise[] = []
-
-  for (const muscleGroup of FOCUS_MUSCLE_GROUPS[focus]) {
-    const patterns = availablePatterns(muscleGroup, equipment)
-    if (patterns.length === 0) {
-      throw new Error(`No exercise available for ${muscleGroup} on equipment profile ${equipment}`)
-    }
-
-    for (const pattern of patterns.slice(0, exercisesPerMuscleGroup)) {
-      const name = substituteForEquipment(pattern, equipment)
-      if (!name) continue
-      exercises.push({
-        patternId: pattern.id,
-        name,
-        muscleGroup: pattern.muscleGroup,
-        secondaryMuscleGroups: pattern.secondaryMuscleGroups,
-        rangeOfMotion: 'full',
-        progression: 'double-progression',
-        ...setsRepsRestFor(pattern.kind),
-      })
-    }
+function resolveExercise(
+  prescription: TemplateExercisePrescription,
+  equipment: Equipment,
+): PlannedExercise {
+  const pattern = EXERCISE_CATALOG.find((p) => p.id === prescription.patternId)
+  if (!pattern) {
+    throw new Error(`Unknown movement pattern id: ${prescription.patternId}`)
   }
-
-  return exercises
+  const name = substituteForEquipment(pattern, equipment)
+  if (!name) {
+    throw new Error(`No exercise available for pattern ${prescription.patternId} on ${equipment}`)
+  }
+  return {
+    patternId: prescription.patternId,
+    name,
+    sets: prescription.sets,
+    reps: prescription.reps,
+    restSeconds: prescription.restSeconds,
+    note: prescription.note,
+  }
 }
 
 export function generateProgram(
@@ -60,31 +43,32 @@ export function generateProgram(
   equipment: Equipment,
   experienceLevel: ExperienceLevel,
 ): WeekProgram {
-  if (daysPerWeek < 2 || daysPerWeek > 6) {
-    throw new Error(`daysPerWeek must be between 2 and 6, got ${daysPerWeek}`)
+  if (daysPerWeek < 1 || daysPerWeek > 7) {
+    throw new Error(`daysPerWeek must be between 1 and 7, got ${daysPerWeek}`)
   }
 
-  const schedule = applyExperienceLevelSplit(daysPerWeek, experienceLevel)
-  enforceRestDayAndSpacing(schedule)
-  ensureMinimumMuscleGroupFrequency(schedule)
+  const template = getTemplate(daysPerWeek)
 
-  const week: DaySlot[] = schedule.map((slot) =>
-    slot === 'rest'
-      ? { type: 'rest' }
-      : {
-          type: 'training',
-          focus: slot,
-          warmup: WARMUP_NOTE,
-          exercises: buildSessionExercises(slot, equipment),
-        },
-  )
+  const week: DaySlot[] = template.week.map((day) => {
+    if (day.type === 'rest') return { type: 'rest' }
+    if (day.type === 'active_recovery') return day
+    return {
+      type: 'training',
+      label: day.label,
+      kind: day.kind,
+      exercises: day.exercises.map((exercise) => resolveExercise(exercise, equipment)),
+    }
+  })
 
   return {
     daysPerWeek,
     equipment,
     experienceLevel,
+    templateName: template.name,
+    source: template.source,
+    disclaimer: template.disclaimer ?? null,
+    experienceWarning: getExperienceWarning(daysPerWeek, experienceLevel),
     week,
-    deloadEveryWeeks: DELOAD_EVERY_WEEKS,
-    notes: PROGRAM_NOTES,
+    notes: GLOBAL_NOTES,
   }
 }

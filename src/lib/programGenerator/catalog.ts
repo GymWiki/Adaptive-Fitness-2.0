@@ -75,6 +75,7 @@ export const EXERCISE_CATALOG: MovementPattern[] = [
     variants: {
       full_gym: 'Cable Lateral Raise',
       home_dumbbells: 'Dumbbell Lateral Raise',
+      bodyweight_only: 'Prone Y-Raise',
     },
   },
   // Biceps
@@ -97,6 +98,7 @@ export const EXERCISE_CATALOG: MovementPattern[] = [
     variants: {
       full_gym: 'Cable Hammer Curl',
       home_dumbbells: 'Dumbbell Hammer Curl',
+      bodyweight_only: 'Neutral-Grip Chin-ups',
     },
   },
   // Triceps

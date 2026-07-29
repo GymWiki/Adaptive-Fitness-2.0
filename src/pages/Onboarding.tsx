@@ -5,7 +5,7 @@ import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 import { generateProgram } from '../lib/programGenerator'
 import type { Equipment, ExperienceLevel } from '../lib/programGenerator'
-import { EQUIPMENT_LABELS, EXPERIENCE_LABELS, summarizeSplit } from '../lib/labels'
+import { EQUIPMENT_LABELS, EXPERIENCE_LABELS } from '../lib/labels'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { ErrorState, Spinner } from '../components/ui/States'
@@ -127,8 +127,13 @@ export function Onboarding() {
         <h1 className="font-display text-2xl font-bold">Klaar!</h1>
         <p className="mt-4 text-ink-dim">
           Jouw schema: <strong className="text-ink">{form.daysPerWeek} dagen/week</strong>,{' '}
-          {summarizeSplit(program)}
+          {program.templateName}
         </p>
+        {program.experienceWarning && (
+          <p className="mt-3 rounded-lg bg-warning/15 px-3 py-2 text-xs text-warning">
+            {program.experienceWarning}
+          </p>
+        )}
         {error && (
           <div className="mt-4">
             <ErrorState message={error} />
@@ -208,8 +213,8 @@ export function Onboarding() {
             <h1 className="font-display text-xl font-bold">
               Hoeveel dagen per week wil je trainen?
             </h1>
-            <div className="grid grid-cols-5 gap-2">
-              {[2, 3, 4, 5, 6].map((n) => (
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                 <OptionButton
                   key={n}
                   selected={form.daysPerWeek === n}
