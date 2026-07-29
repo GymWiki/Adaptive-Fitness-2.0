@@ -1,9 +1,18 @@
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { InstallCard } from '../components/InstallCard'
 import { useAuth } from '../contexts/AuthContext'
 
 export function Landing() {
   const { session } = useAuth()
+  const navigate = useNavigate()
+
+  // A confirmation/magic-link click can land here (e.g. via a Supabase Site
+  // URL fallback) even after successfully establishing a session — send the
+  // user straight into the app instead of showing marketing content.
+  useEffect(() => {
+    if (session) navigate('/app', { replace: true })
+  }, [session, navigate])
 
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-16">
