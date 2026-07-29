@@ -12,6 +12,7 @@ import { Dashboard } from './pages/Dashboard'
 import { LogWorkout } from './pages/LogWorkout'
 import { History } from './pages/History'
 import { PlanGenerator } from './pages/PlanGenerator'
+import { Progress } from './pages/Progress'
 
 function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -62,6 +63,14 @@ function App() {
                 element={
                   <AppLayout>
                     <PlanGenerator />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/app/progress"
+                element={
+                  <AppLayout>
+                    <Progress />
                   </AppLayout>
                 }
               />

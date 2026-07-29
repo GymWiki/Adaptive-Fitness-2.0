@@ -45,11 +45,21 @@ function CalendarIcon() {
   )
 }
 
+function TrendingUpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+      <path d="M4 16l5.5-6 4 4L20 6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 6h5v5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 const TABS = [
   { to: '/app', end: true, label: 'Overzicht', icon: HomeIcon },
   { to: '/app/log', end: false, label: 'Loggen', icon: PlusIcon },
   { to: '/app/history', end: false, label: 'Historie', icon: ClockIcon },
   { to: '/app/plan', end: false, label: 'Schema', icon: CalendarIcon },
+  { to: '/app/progress', end: false, label: 'Progressie', icon: TrendingUpIcon },
 ]
 
 export function NavBar() {
@@ -91,6 +101,9 @@ export function NavBar() {
             </NavLink>
             <NavLink to="/app/plan" className={desktopLinkClasses}>
               Schema
+            </NavLink>
+            <NavLink to="/app/progress" className={desktopLinkClasses}>
+              Progressie
             </NavLink>
           </div>
           <button
