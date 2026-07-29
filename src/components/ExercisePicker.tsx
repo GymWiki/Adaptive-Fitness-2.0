@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Exercise } from '../lib/types'
+import { Button } from './ui/Button'
+import { Input, Select } from './ui/Input'
 
 type Props = {
   value: string
@@ -51,7 +53,7 @@ export function ExercisePicker({ value, onChange, onSelectExercise }: Props) {
 
   return (
     <div>
-      <select
+      <Select
         value={value}
         onChange={(e) => {
           if (e.target.value === '__add__') {
@@ -60,7 +62,6 @@ export function ExercisePicker({ value, onChange, onSelectExercise }: Props) {
             handleSelect(e.target.value)
           }
         }}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
       >
         <option value="" disabled>
           Kies een oefening
@@ -71,24 +72,20 @@ export function ExercisePicker({ value, onChange, onSelectExercise }: Props) {
           </option>
         ))}
         <option value="__add__">+ Nieuwe oefening toevoegen</option>
-      </select>
+      </Select>
 
       {showAdd && (
         <div className="mt-2 flex gap-2">
-          <input
+          <Input
             autoFocus
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Naam oefening"
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+            className="flex-1"
           />
-          <button
-            type="button"
-            onClick={handleAddExercise}
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
-          >
+          <Button type="button" onClick={handleAddExercise}>
             Toevoegen
-          </button>
+          </Button>
         </div>
       )}
     </div>

@@ -7,16 +7,19 @@ export function AuthErrorBanner() {
   if (!authError) return null
 
   return (
-    <div className="bg-red-50 px-4 py-3 text-center text-sm text-red-800 dark:bg-red-950 dark:text-red-300">
-      Inloggen mislukt: {authError}.{' '}
-      <Link to="/login" onClick={clearAuthError} className="font-medium underline">
-        Vraag een nieuwe link aan
+    <div
+      role="alert"
+      className="border-b border-danger/30 bg-danger/10 px-4 py-3 text-center text-sm text-ink"
+    >
+      <span className="text-danger">Inloggen mislukt:</span> {authError}.{' '}
+      <Link to="/login" onClick={clearAuthError} className="font-semibold underline">
+        Vraag een nieuwe inloglink aan
       </Link>
       <button
         type="button"
         onClick={clearAuthError}
-        aria-label="Sluiten"
-        className="ml-3 text-red-400 hover:text-red-600"
+        aria-label="Melding sluiten"
+        className="ml-3 min-h-8 min-w-8 rounded-lg text-ink-faint hover:text-ink"
       >
         ✕
       </button>

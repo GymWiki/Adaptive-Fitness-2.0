@@ -9,6 +9,21 @@ type Props = {
   exercise: Exercise
 }
 
+const TONE_CLASSES = {
+  omhoog: 'bg-accent/15 text-accent',
+  omlaag: 'bg-warning/15 text-warning',
+  gelijk: 'bg-surface-2 text-ink-dim',
+  geen_historie: 'bg-surface-2 text-ink-dim',
+} as const
+
+// Color is never the only signal — an arrow/icon carries the same meaning.
+const TONE_ICON = {
+  omhoog: '↑',
+  omlaag: '↓',
+  gelijk: '→',
+  geen_historie: '＋',
+} as const
+
 export function ExerciseAdvice({ exercise }: Props) {
   const { user } = useAuth()
   const [advice, setAdvice] = useState<Advice | null>(null)
@@ -43,21 +58,17 @@ export function ExerciseAdvice({ exercise }: Props) {
     }
   }, [exercise, user])
 
-  if (loading) return null
+  if (loading) {
+    return <div className="mt-2 h-8 animate-pulse rounded-lg bg-surface-2" />
+  }
   if (!advice) return null
 
-  const badgeClasses =
-    advice.advies === 'omhoog'
-      ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300'
-      : advice.advies === 'omlaag'
-        ? 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-
   return (
-    <div className={`mt-2 rounded-lg px-3 py-2 text-xs ${badgeClasses}`}>
-      {advice.gewicht !== null && (
-        <span className="font-semibold">{advice.gewicht} kg — </span>
-      )}
+    <div
+      className={`mt-2 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs ${TONE_CLASSES[advice.advies]}`}
+    >
+      <span aria-hidden>{TONE_ICON[advice.advies]}</span>
+      {advice.gewicht !== null && <span className="font-semibold">{advice.gewicht} kg —</span>}
       {advice.reden}
     </div>
   )

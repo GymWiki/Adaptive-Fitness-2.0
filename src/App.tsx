@@ -15,7 +15,7 @@ import { PlanGenerator } from './pages/PlanGenerator'
 
 function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
+    <div className="min-h-screen pb-16 sm:pb-0">
       <NavBar />
       {children}
     </div>

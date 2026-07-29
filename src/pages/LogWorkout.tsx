@@ -5,6 +5,10 @@ import { useAuth } from '../contexts/AuthContext'
 import { ExercisePicker } from '../components/ExercisePicker'
 import { ExerciseAdvice } from '../components/ExerciseAdvice'
 import type { Exercise } from '../lib/types'
+import { Button } from '../components/ui/Button'
+import { Card } from '../components/ui/Card'
+import { Input, Select } from '../components/ui/Input'
+import { ErrorState } from '../components/ui/States'
 
 type DraftSet = {
   key: string
@@ -88,27 +92,24 @@ export function LogWorkout() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Nieuwe workout</h1>
+      <h1 className="font-display text-2xl font-bold">Nieuwe workout</h1>
 
-      <input
+      <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Naam (optioneel, bv. Push day)"
-        className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+        className="mt-4"
       />
 
       <div className="mt-6 flex flex-col gap-4">
         {sets.map((set, index) => (
-          <div
-            key={set.key}
-            className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"
-          >
+          <Card key={set.key}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">Set {index + 1}</span>
+              <span className="text-sm font-semibold text-ink-dim">Set {index + 1}</span>
               <button
                 type="button"
                 onClick={() => removeSet(set.key)}
-                className="text-sm text-slate-400 hover:text-red-600"
+                className="min-h-9 rounded-lg px-2 text-sm font-medium text-ink-faint hover:text-danger"
               >
                 Verwijder
               </button>
@@ -122,7 +123,7 @@ export function LogWorkout() {
               {set.exercise && <ExerciseAdvice exercise={set.exercise} />}
             </div>
             <div className="mt-2 flex gap-2">
-              <input
+              <Input
                 type="number"
                 inputMode="decimal"
                 min="0"
@@ -130,21 +131,21 @@ export function LogWorkout() {
                 placeholder="Gewicht (kg)"
                 value={set.weight}
                 onChange={(e) => updateSet(set.key, { weight: e.target.value })}
-                className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="w-1/3"
               />
-              <input
+              <Input
                 type="number"
                 inputMode="numeric"
                 min="0"
                 placeholder="Herhalingen"
                 value={set.reps}
                 onChange={(e) => updateSet(set.key, { reps: e.target.value })}
-                className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="w-1/3"
               />
-              <select
+              <Select
                 value={set.rir}
                 onChange={(e) => updateSet(set.key, { rir: e.target.value })}
-                className="w-1/3 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="w-1/3"
               >
                 <option value="" disabled>
                   RIR
@@ -154,30 +155,29 @@ export function LogWorkout() {
                     RIR {rir}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       <button
         type="button"
         onClick={addSet}
-        className="mt-4 w-full rounded-lg border border-dashed border-slate-300 py-2 text-sm font-medium text-slate-600 hover:border-brand-600 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400"
+        className="mt-4 min-h-12 w-full rounded-xl border border-dashed border-border text-sm font-semibold text-ink-dim hover:border-accent hover:text-accent"
       >
         + Set toevoegen
       </button>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="mt-4">
+          <ErrorState message={error} />
+        </div>
+      )}
 
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={saving}
-        className="mt-6 w-full rounded-lg bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-      >
+      <Button onClick={handleSave} disabled={saving} fullWidth className="mt-6">
         {saving ? 'Opslaan...' : 'Workout opslaan'}
-      </button>
+      </Button>
     </div>
   )
 }

@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { Button } from '../components/ui/Button'
+import { Input } from '../components/ui/Input'
+import { ErrorState } from '../components/ui/States'
 
 export function Login() {
   const { session, signInWithEmail } = useAuth()
@@ -23,33 +26,32 @@ export function Login() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <h1 className="text-center text-2xl font-bold text-slate-900 dark:text-white">
-        Inloggen bij Fitness Log
-      </h1>
+    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
+      <Link to="/" className="mb-8 text-center font-display text-lg font-bold">
+        Fitness Log
+      </Link>
+      <h1 className="text-center font-display text-2xl font-bold">Inloggen</h1>
+      <p className="mt-2 text-center text-sm text-ink-dim">
+        Geen wachtwoord nodig — we sturen je een inloglink.
+      </p>
 
       {status === 'sent' ? (
-        <p className="mt-6 rounded-lg bg-green-50 p-4 text-center text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
-          Check je mail! We hebben een inloglink gestuurd naar {email}.
-        </p>
+        <div className="mt-6 rounded-xl border border-accent/30 bg-accent/10 p-4 text-center text-sm text-ink">
+          Check je mail! We hebben een inloglink gestuurd naar <strong>{email}</strong>.
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
-          <input
+          <Input
             type="email"
             required
             placeholder="jij@voorbeeld.nl"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-lg border border-slate-300 px-4 py-3 text-sm focus:border-brand-600 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           />
-          <button
-            type="submit"
-            disabled={status === 'sending'}
-            className="rounded-lg bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={status === 'sending'} fullWidth>
             {status === 'sending' ? 'Bezig...' : 'Stuur inloglink'}
-          </button>
-          {status === 'error' && <p className="text-sm text-red-600">{errorMessage}</p>}
+          </Button>
+          {status === 'error' && <ErrorState message={errorMessage} />}
         </form>
       )}
     </div>

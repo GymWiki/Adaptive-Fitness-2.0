@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabase'
 import { generateProgram } from '../lib/programGenerator'
 import type { Equipment, ExperienceLevel } from '../lib/programGenerator'
 import { EQUIPMENT_LABELS, EXPERIENCE_LABELS, summarizeSplit } from '../lib/labels'
+import { Button } from '../components/ui/Button'
+import { Input, Select } from '../components/ui/Input'
+import { ErrorState, Spinner } from '../components/ui/States'
 
 const TOTAL_STEPS = 4
 
@@ -31,6 +34,30 @@ const initialForm: FormState = {
   experienceLevel: 'beginner',
 }
 
+function OptionButton({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-14 rounded-xl border px-4 text-left text-[15px] font-semibold transition-colors ${
+        selected
+          ? 'border-accent bg-accent text-accent-ink'
+          : 'border-border bg-surface-2 text-ink hover:border-border-strong'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function Onboarding() {
   const { user } = useAuth()
   const { profile, loading } = useProfile()
@@ -42,13 +69,7 @@ export function Onboarding() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-slate-500">Laden...</p>
-      </div>
-    )
-  }
+  if (loading) return <Spinner />
 
   if (profile?.onboarding_completed) {
     return <Navigate to="/app" replace />
@@ -102,87 +123,81 @@ export function Onboarding() {
   if (phase === 'result') {
     const program = generateProgram(form.daysPerWeek, form.equipment, form.experienceLevel)
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Klaar!</h1>
-        <p className="mt-4 text-slate-600 dark:text-slate-400">
-          Jouw schema: {form.daysPerWeek} dagen/week, {summarizeSplit(program)}
+      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16 text-center">
+        <h1 className="font-display text-2xl font-bold">Klaar!</h1>
+        <p className="mt-4 text-ink-dim">
+          Jouw schema: <strong className="text-ink">{form.daysPerWeek} dagen/week</strong>,{' '}
+          {summarizeSplit(program)}
         </p>
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-        <button
-          type="button"
-          onClick={handleFinish}
-          disabled={saving}
-          className="mt-8 w-full rounded-lg bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-        >
+        {error && (
+          <div className="mt-4">
+            <ErrorState message={error} />
+          </div>
+        )}
+        <Button onClick={handleFinish} disabled={saving} fullWidth className="mt-8">
           {saving ? 'Opslaan...' : 'Naar dashboard'}
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-16">
-      <p className="text-center text-sm font-medium text-slate-500">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
+      <p className="text-center text-sm font-semibold text-ink-dim">
         Stap {step} van {TOTAL_STEPS}
       </p>
-      <div className="mt-2 flex gap-1">
+      <div className="mt-3 flex gap-1.5">
         {Array.from({ length: TOTAL_STEPS }, (_, i) => (
           <div
             key={i}
-            className={`h-1.5 flex-1 rounded-full ${
-              i < step ? 'bg-brand-600' : 'bg-slate-200 dark:bg-slate-800'
-            }`}
+            className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-accent' : 'bg-surface-2'}`}
           />
         ))}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-10">
         {step === 1 && (
           <div className="flex flex-col gap-3">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Over jou</h1>
-            <p className="text-sm text-slate-500">Allemaal optioneel — vul in wat je wilt.</p>
-            <input
+            <h1 className="font-display text-xl font-bold">Over jou</h1>
+            <p className="text-sm text-ink-dim">Allemaal optioneel — vul in wat je wilt.</p>
+            <Input
               value={form.displayName}
               onChange={(e) => update('displayName', e.target.value)}
               placeholder="Naam"
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              className="mt-2"
             />
             <div className="flex gap-2">
-              <input
+              <Input
                 type="number"
                 inputMode="decimal"
                 value={form.weightKg}
                 onChange={(e) => update('weightKg', e.target.value)}
                 placeholder="Gewicht (kg)"
-                className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
-              <input
+              <Input
                 type="number"
                 inputMode="decimal"
                 value={form.heightCm}
                 onChange={(e) => update('heightCm', e.target.value)}
                 placeholder="Lengte (cm)"
-                className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
             </div>
             <div className="flex gap-2">
-              <select
+              <Select
                 value={form.gender}
                 onChange={(e) => update('gender', e.target.value as FormState['gender'])}
-                className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               >
                 <option value="">Geslacht</option>
                 <option value="male">Man</option>
                 <option value="female">Vrouw</option>
                 <option value="other">Anders</option>
-              </select>
-              <input
+              </Select>
+              <Input
                 type="number"
                 inputMode="numeric"
                 value={form.birthYear}
                 onChange={(e) => update('birthYear', e.target.value)}
                 placeholder="Geboortejaar"
-                className="w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
               />
             </div>
           </div>
@@ -190,23 +205,18 @@ export function Onboarding() {
 
         {step === 2 && (
           <div className="flex flex-col gap-3">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h1 className="font-display text-xl font-bold">
               Hoeveel dagen per week wil je trainen?
             </h1>
             <div className="grid grid-cols-5 gap-2">
               {[2, 3, 4, 5, 6].map((n) => (
-                <button
+                <OptionButton
                   key={n}
-                  type="button"
+                  selected={form.daysPerWeek === n}
                   onClick={() => update('daysPerWeek', n)}
-                  className={`rounded-lg border py-3 text-sm font-medium ${
-                    form.daysPerWeek === n
-                      ? 'border-brand-600 bg-brand-600 text-white'
-                      : 'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300'
-                  }`}
                 >
-                  {n}
-                </button>
+                  <span className="block text-center">{n}</span>
+                </OptionButton>
               ))}
             </div>
           </div>
@@ -214,66 +224,44 @@ export function Onboarding() {
 
         {step === 3 && (
           <div className="flex flex-col gap-3">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-              Welke apparatuur heb je?
-            </h1>
+            <h1 className="font-display text-xl font-bold">Welke apparatuur heb je?</h1>
             {(Object.keys(EQUIPMENT_LABELS) as Equipment[]).map((key) => (
-              <button
+              <OptionButton
                 key={key}
-                type="button"
+                selected={form.equipment === key}
                 onClick={() => update('equipment', key)}
-                className={`rounded-lg border px-4 py-3 text-left text-sm font-medium ${
-                  form.equipment === key
-                    ? 'border-brand-600 bg-brand-600 text-white'
-                    : 'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300'
-                }`}
               >
                 {EQUIPMENT_LABELS[key]}
-              </button>
+              </OptionButton>
             ))}
           </div>
         )}
 
         {step === 4 && (
           <div className="flex flex-col gap-3">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-              Wat is je trainingservaring?
-            </h1>
+            <h1 className="font-display text-xl font-bold">Wat is je trainingservaring?</h1>
             {(Object.keys(EXPERIENCE_LABELS) as ExperienceLevel[]).map((key) => (
-              <button
+              <OptionButton
                 key={key}
-                type="button"
+                selected={form.experienceLevel === key}
                 onClick={() => update('experienceLevel', key)}
-                className={`rounded-lg border px-4 py-3 text-left text-sm font-medium ${
-                  form.experienceLevel === key
-                    ? 'border-brand-600 bg-brand-600 text-white'
-                    : 'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300'
-                }`}
               >
                 {EXPERIENCE_LABELS[key]}
-              </button>
+              </OptionButton>
             ))}
           </div>
         )}
       </div>
 
-      <div className="mt-8 flex gap-2">
+      <div className="mt-10 flex gap-2">
         {step > 1 && (
-          <button
-            type="button"
-            onClick={goBack}
-            className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-medium text-slate-600 dark:border-slate-700 dark:text-slate-400"
-          >
+          <Button variant="secondary" onClick={goBack}>
             Vorige
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          onClick={goNext}
-          className="flex-1 rounded-lg bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700"
-        >
+        <Button onClick={goNext} fullWidth>
           {step < TOTAL_STEPS ? 'Volgende' : 'Bekijk mijn schema'}
-        </button>
+        </Button>
       </div>
     </div>
   )
