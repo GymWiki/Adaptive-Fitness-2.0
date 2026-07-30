@@ -16,6 +16,8 @@ export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced'
 
 export type ExerciseKind = 'compound' | 'isolation'
 
+export type Goal = 'hypertrophy' | 'strength' | 'fat_loss' | 'conditioning' | 'mix'
+
 // A movement pattern trains one primary muscle group (plus optional secondaries)
 // and lists an exercise name per equipment tier. Not every tier needs an entry —
 // a pattern only needs to cover the tiers it makes sense for, as long as every
@@ -71,6 +73,9 @@ export type ProgramTemplate = {
   name: string
   source: string
   disclaimer?: string
+  // HIT and 5×5 carry their reps as part of their named methodology — goal
+  // never rewrites them, it only ever adds cardio. See applyGoal.ts.
+  goalOverrideExempt?: boolean
   week: TemplateDay[]
 }
 
@@ -80,7 +85,15 @@ export type PlannedExercise = {
   sets: number
   reps: string
   restSeconds: string
+  /** Target RIR for this specific exercise — varies by goal and by compound/isolation. */
+  rir: string
   note?: string
+}
+
+/** A short cardio session attached to an existing training day, when there's no rest day to spare. */
+export type CardioAddOn = {
+  description: string
+  durationMinutes: string
 }
 
 export type DaySlot =
@@ -91,12 +104,15 @@ export type DaySlot =
       label: string
       kind: TemplateDayKind
       exercises: PlannedExercise[]
+      cardioAddOn?: CardioAddOn
     }
+  | { type: 'cardio'; label: string; description: string; durationMinutes: string }
 
 export type WeekProgram = {
   daysPerWeek: number
   equipment: Equipment
   experienceLevel: ExperienceLevel
+  goal: Goal
   templateName: string
   source: string
   disclaimer: string | null

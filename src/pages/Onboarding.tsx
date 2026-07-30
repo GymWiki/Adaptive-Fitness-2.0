@@ -4,13 +4,13 @@ import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 import { generateProgram } from '../lib/programGenerator'
-import type { Equipment, ExperienceLevel } from '../lib/programGenerator'
-import { EQUIPMENT_LABELS, EXPERIENCE_LABELS } from '../lib/labels'
+import type { Equipment, ExperienceLevel, Goal } from '../lib/programGenerator'
+import { EQUIPMENT_LABELS, EXPERIENCE_LABELS, GOAL_LABELS } from '../lib/labels'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { ErrorState, Spinner } from '../components/ui/States'
 
-const TOTAL_STEPS = 4
+const TOTAL_STEPS = 5
 
 type FormState = {
   displayName: string
@@ -18,6 +18,7 @@ type FormState = {
   heightCm: string
   gender: 'male' | 'female' | 'other' | ''
   birthYear: string
+  goal: Goal
   daysPerWeek: number
   equipment: Equipment
   experienceLevel: ExperienceLevel
@@ -29,6 +30,7 @@ const initialForm: FormState = {
   heightCm: '',
   gender: '',
   birthYear: '',
+  goal: 'hypertrophy',
   daysPerWeek: 3,
   equipment: 'full_gym',
   experienceLevel: 'beginner',
@@ -104,6 +106,7 @@ export function Onboarding() {
         height_cm: form.heightCm ? Number(form.heightCm) : null,
         gender: form.gender || null,
         birth_year: form.birthYear ? Number(form.birthYear) : null,
+        goal: form.goal,
         days_per_week: form.daysPerWeek,
         equipment: form.equipment,
         experience_level: form.experienceLevel,
@@ -121,7 +124,7 @@ export function Onboarding() {
   }
 
   if (phase === 'result') {
-    const program = generateProgram(form.daysPerWeek, form.equipment, form.experienceLevel)
+    const program = generateProgram(form.daysPerWeek, form.equipment, form.experienceLevel, form.goal)
     return (
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16 text-center">
         <h1 className="font-display text-2xl font-bold">Klaar!</h1>
@@ -210,6 +213,21 @@ export function Onboarding() {
 
         {step === 2 && (
           <div className="flex flex-col gap-3">
+            <h1 className="font-display text-xl font-bold">Wat is je doel?</h1>
+            <p className="text-sm text-ink-dim">
+              Bepaalt reps, RIR, volume en of er cardio wordt toegevoegd — niet welk schema je
+              krijgt.
+            </p>
+            {(Object.keys(GOAL_LABELS) as Goal[]).map((key) => (
+              <OptionButton key={key} selected={form.goal === key} onClick={() => update('goal', key)}>
+                {GOAL_LABELS[key]}
+              </OptionButton>
+            ))}
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="flex flex-col gap-3">
             <h1 className="font-display text-xl font-bold">
               Hoeveel dagen per week wil je trainen?
             </h1>
@@ -227,7 +245,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="flex flex-col gap-3">
             <h1 className="font-display text-xl font-bold">Welke apparatuur heb je?</h1>
             {(Object.keys(EQUIPMENT_LABELS) as Equipment[]).map((key) => (
@@ -242,7 +260,7 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="flex flex-col gap-3">
             <h1 className="font-display text-xl font-bold">Wat is je trainingservaring?</h1>
             {(Object.keys(EXPERIENCE_LABELS) as ExperienceLevel[]).map((key) => (

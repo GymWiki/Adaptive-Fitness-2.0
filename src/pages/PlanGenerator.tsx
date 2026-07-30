@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { generateProgram } from '../lib/programGenerator'
-import type { Equipment, ExperienceLevel, WeekProgram } from '../lib/programGenerator'
-import { EQUIPMENT_LABELS, EXPERIENCE_LABELS } from '../lib/labels'
+import type { Equipment, ExperienceLevel, Goal, WeekProgram } from '../lib/programGenerator'
+import { EQUIPMENT_LABELS, EXPERIENCE_LABELS, GOAL_LABELS } from '../lib/labels'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Select } from '../components/ui/Input'
@@ -15,6 +15,7 @@ type GeneratedParams = {
   daysPerWeek: number
   equipment: Equipment
   experienceLevel: ExperienceLevel
+  goal: Goal
 }
 
 export function PlanGenerator() {
@@ -25,6 +26,7 @@ export function PlanGenerator() {
   const [daysPerWeek, setDaysPerWeek] = useState(4)
   const [equipment, setEquipment] = useState<Equipment>('full_gym')
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel>('intermediate')
+  const [goal, setGoal] = useState<Goal>('hypertrophy')
   const [program, setProgram] = useState<WeekProgram | null>(null)
   const [generatedParams, setGeneratedParams] = useState<GeneratedParams | null>(null)
 
@@ -35,16 +37,17 @@ export function PlanGenerator() {
 
   // Pre-fill the form with the user's current active schema, if they have one.
   useEffect(() => {
-    if (profile?.days_per_week && profile.equipment && profile.experience_level) {
+    if (profile?.days_per_week && profile.equipment && profile.experience_level && profile.goal) {
       setDaysPerWeek(profile.days_per_week)
       setEquipment(profile.equipment)
       setExperienceLevel(profile.experience_level)
+      setGoal(profile.goal)
     }
   }, [profile])
 
   function handleGenerate() {
-    setProgram(generateProgram(daysPerWeek, equipment, experienceLevel))
-    setGeneratedParams({ daysPerWeek, equipment, experienceLevel })
+    setProgram(generateProgram(daysPerWeek, equipment, experienceLevel, goal))
+    setGeneratedParams({ daysPerWeek, equipment, experienceLevel, goal })
     setConfirmingAdopt(false)
     setAdopted(false)
     setAdoptError('')
@@ -55,7 +58,8 @@ export function PlanGenerator() {
     !!generatedParams &&
     profile.days_per_week === generatedParams.daysPerWeek &&
     profile.equipment === generatedParams.equipment &&
-    profile.experience_level === generatedParams.experienceLevel
+    profile.experience_level === generatedParams.experienceLevel &&
+    profile.goal === generatedParams.goal
 
   async function handleAdopt() {
     if (!user || !generatedParams) return
@@ -68,6 +72,7 @@ export function PlanGenerator() {
         days_per_week: generatedParams.daysPerWeek,
         equipment: generatedParams.equipment,
         experience_level: generatedParams.experienceLevel,
+        goal: generatedParams.goal,
       })
       .eq('id', user.id)
 
@@ -87,10 +92,21 @@ export function PlanGenerator() {
       <h1 className="font-display text-2xl font-bold">Schema genereren</h1>
       <p className="mt-1 text-sm text-ink-dim">
         Vaste, wetenschappelijk onderbouwde trainingstemplates op basis van je dagen, apparatuur
-        en ervaring.
+        en ervaring — je doel bepaalt de reps, RIR, volume en cardio binnen dat schema.
       </p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
+          Doel
+          <Select value={goal} onChange={(e) => setGoal(e.target.value as Goal)}>
+            {(Object.keys(GOAL_LABELS) as Goal[]).map((key) => (
+              <option key={key} value={key}>
+                {GOAL_LABELS[key]}
+              </option>
+            ))}
+          </Select>
+        </label>
+
         <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
           Dagen per week
           <Select value={daysPerWeek} onChange={(e) => setDaysPerWeek(Number(e.target.value))}>

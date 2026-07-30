@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import type { Profile } from '../lib/types'
 
 const PROFILE_COLUMNS =
-  'id, display_name, weight_kg, height_cm, gender, birth_year, days_per_week, equipment, experience_level, onboarding_completed'
+  'id, display_name, weight_kg, height_cm, gender, birth_year, days_per_week, equipment, experience_level, goal, onboarding_completed'
 
 export function useProfile() {
   const { user } = useAuth()

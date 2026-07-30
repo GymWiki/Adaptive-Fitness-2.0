@@ -36,5 +36,6 @@ export type Profile = {
   days_per_week: number | null
   equipment: 'full_gym' | 'home_dumbbells' | 'bodyweight_only' | null
   experience_level: 'beginner' | 'intermediate' | 'advanced' | null
+  goal: 'hypertrophy' | 'strength' | 'fat_loss' | 'conditioning' | 'mix' | null
   onboarding_completed: boolean
 }

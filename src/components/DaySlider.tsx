@@ -26,15 +26,25 @@ function MoonIcon() {
   )
 }
 
+function HeartPulseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+      <path d="M3 12h4l2-4 3 7 2-5 1.5 2H21" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function dayIcon(day: DaySlot) {
   if (day.type === 'rest') return <MoonIcon />
   if (day.type === 'active_recovery') return <LeafIcon />
+  if (day.type === 'cardio') return <HeartPulseIcon />
   return <DumbbellIcon />
 }
 
 function dayLabel(day: DaySlot) {
   if (day.type === 'rest') return 'Rust'
   if (day.type === 'active_recovery') return 'Herstel'
+  if (day.type === 'cardio') return 'Cardio'
   return day.label
 }
 

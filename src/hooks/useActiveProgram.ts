@@ -11,7 +11,13 @@ export function useActiveProgram(): { program: WeekProgram | null; loading: bool
     if (!profile || !profile.days_per_week || !profile.equipment || !profile.experience_level) {
       return null
     }
-    return generateProgram(profile.days_per_week, profile.equipment, profile.experience_level)
+    // Accounts created before the goal migration have no goal saved yet.
+    return generateProgram(
+      profile.days_per_week,
+      profile.equipment,
+      profile.experience_level,
+      profile.goal ?? 'hypertrophy',
+    )
   }, [profile])
 
   return { program, loading }

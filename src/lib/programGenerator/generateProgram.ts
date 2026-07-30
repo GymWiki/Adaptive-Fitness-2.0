@@ -1,10 +1,14 @@
 import { EXERCISE_CATALOG, substituteForEquipment } from './catalog'
 import { getTemplate } from './templates'
 import { getExperienceWarning } from './experienceWarning'
+import { applyGoal } from './applyGoal'
+import { applyCardio } from './applyCardio'
 import type {
   DaySlot,
   Equipment,
+  ExerciseKind,
   ExperienceLevel,
+  Goal,
   PlannedExercise,
   TemplateExercisePrescription,
   WeekProgram,
@@ -16,10 +20,14 @@ const GLOBAL_NOTES = [
   'Las elke 4-6 weken een deload-week in met verlaagd volume/intensiteit (Lorenz & Morrison, 2015).',
 ]
 
+const EXERCISE_KIND_BY_PATTERN_ID: Record<string, ExerciseKind> = Object.fromEntries(
+  EXERCISE_CATALOG.map((pattern) => [pattern.id, pattern.kind]),
+)
+
 function resolveExercise(
   prescription: TemplateExercisePrescription,
   equipment: Equipment,
-): PlannedExercise {
+): Omit<PlannedExercise, 'rir'> {
   const pattern = EXERCISE_CATALOG.find((p) => p.id === prescription.patternId)
   if (!pattern) {
     throw new Error(`Unknown movement pattern id: ${prescription.patternId}`)
@@ -42,33 +50,45 @@ export function generateProgram(
   daysPerWeek: number,
   equipment: Equipment,
   experienceLevel: ExperienceLevel,
+  goal: Goal,
 ): WeekProgram {
   if (daysPerWeek < 1 || daysPerWeek > 7) {
     throw new Error(`daysPerWeek must be between 1 and 7, got ${daysPerWeek}`)
   }
 
   const template = getTemplate(daysPerWeek)
+  const exempt = template.goalOverrideExempt ?? false
 
-  const week: DaySlot[] = template.week.map((day) => {
+  const resolvedWeek: DaySlot[] = template.week.map((day) => {
     if (day.type === 'rest') return { type: 'rest' }
     if (day.type === 'active_recovery') return day
+    const resolved = day.exercises.map((exercise) => resolveExercise(exercise, equipment))
     return {
       type: 'training',
       label: day.label,
       kind: day.kind,
-      exercises: day.exercises.map((exercise) => resolveExercise(exercise, equipment)),
+      exercises: applyGoal(
+        resolved.map((exercise) => ({ ...exercise, rir: '' })),
+        EXERCISE_KIND_BY_PATTERN_ID,
+        day.kind,
+        goal,
+        exempt,
+      ),
     }
   })
+
+  const { week, extraNotes } = applyCardio(resolvedWeek, goal)
 
   return {
     daysPerWeek,
     equipment,
     experienceLevel,
+    goal,
     templateName: template.name,
     source: template.source,
     disclaimer: template.disclaimer ?? null,
     experienceWarning: getExperienceWarning(daysPerWeek, experienceLevel),
     week,
-    notes: GLOBAL_NOTES,
+    notes: [...GLOBAL_NOTES, ...extraNotes],
   }
 }

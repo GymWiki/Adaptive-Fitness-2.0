@@ -17,6 +17,7 @@ export const TEMPLATES: Record<number, ProgramTemplate> = {
     disclaimer:
       'Minder mainstream-erkende aanpak dan de andere templates, maar onderzocht en geschikt ' +
       'als je echt maar 1x per week kunt of wilt trainen.',
+    goalOverrideExempt: true,
     week: [
       {
         type: 'training',
@@ -74,6 +75,7 @@ export const TEMPLATES: Record<number, ProgramTemplate> = {
     daysPerWeek: 3,
     name: 'Full Body A/B/C (5×5)',
     source: 'StrongLifts 5×5 / Starting Strength — klassieke lineaire-progressie-aanpak voor beginners',
+    goalOverrideExempt: true,
     week: [
       {
         type: 'training',
