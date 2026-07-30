@@ -10,6 +10,7 @@ import { Login } from './pages/Login'
 import { Onboarding } from './pages/Onboarding'
 import { Dashboard } from './pages/Dashboard'
 import { LogWorkout } from './pages/LogWorkout'
+import { GuidedWorkout } from './pages/GuidedWorkout'
 import { History } from './pages/History'
 import { PlanGenerator } from './pages/PlanGenerator'
 import { Progress } from './pages/Progress'
@@ -47,6 +48,14 @@ function App() {
                 element={
                   <AppLayout>
                     <LogWorkout />
+                  </AppLayout>
+                }
+              />
+              <Route
+                path="/app/log/guided"
+                element={
+                  <AppLayout>
+                    <GuidedWorkout />
                   </AppLayout>
                 }
               />

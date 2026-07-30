@@ -75,7 +75,9 @@ export function DayDetail({ day, isDone }: Props) {
         onClick={() =>
           isDone
             ? navigate('/app/history')
-            : navigate('/app/log', { state: { workoutName: day.label } })
+            : navigate('/app/log/guided', {
+                state: { workoutName: day.label, exercises: day.exercises },
+              })
         }
       >
         {isDone ? 'Bekijk resultaat' : 'Start training'}

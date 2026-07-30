@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Exercise } from '../lib/types'
+import { EXERCISE_COLUMNS } from '../lib/exerciseColumns'
 import { Button } from './ui/Button'
 import { Input, Select } from './ui/Input'
 
@@ -10,9 +11,6 @@ type Props = {
   onChange: (exerciseId: string) => void
   onSelectExercise?: (exercise: Exercise) => void
 }
-
-const EXERCISE_COLUMNS =
-  'id, name, muscle_group, kind, rep_range_min, rep_range_max, target_rir_min, target_rir_max'
 
 export function ExercisePicker({ value, onChange, onSelectExercise }: Props) {
   const { user } = useAuth()
