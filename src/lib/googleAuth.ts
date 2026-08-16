@@ -37,26 +37,6 @@ export function decodeGoogleIdToken(credential: string): GoogleUser | null {
   }
 }
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string
-            callback: (response: { credential: string }) => void
-          }) => void
-          renderButton: (
-            parent: HTMLElement,
-            options: { theme: string; shape: string; size: string; text: string },
-          ) => void
-          disableAutoSelect: () => void
-        }
-      }
-    }
-  }
-}
-
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 export function hasGoogleClientId(): boolean {
