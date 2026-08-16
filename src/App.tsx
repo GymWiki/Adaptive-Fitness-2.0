@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { SheetsAccessGate } from './components/SheetsAccessGate'
 import { OnboardingGate } from './components/OnboardingGate'
 import { NavBar } from './components/NavBar'
 import { AuthErrorBanner } from './components/AuthErrorBanner'
@@ -33,56 +34,58 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route element={<OnboardingGate />}>
-              <Route
-                path="/app"
-                element={
-                  <AppLayout>
-                    <Dashboard />
-                  </AppLayout>
-                }
-              />
-              <Route
-                path="/app/log"
-                element={
-                  <AppLayout>
-                    <LogWorkout />
-                  </AppLayout>
-                }
-              />
-              <Route
-                path="/app/log/guided"
-                element={
-                  <AppLayout>
-                    <GuidedWorkout />
-                  </AppLayout>
-                }
-              />
-              <Route
-                path="/app/history"
-                element={
-                  <AppLayout>
-                    <History />
-                  </AppLayout>
-                }
-              />
-              <Route
-                path="/app/plan"
-                element={
-                  <AppLayout>
-                    <PlanGenerator />
-                  </AppLayout>
-                }
-              />
-              <Route
-                path="/app/progress"
-                element={
-                  <AppLayout>
-                    <Progress />
-                  </AppLayout>
-                }
-              />
+            <Route element={<SheetsAccessGate />}>
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route element={<OnboardingGate />}>
+                <Route
+                  path="/app"
+                  element={
+                    <AppLayout>
+                      <Dashboard />
+                    </AppLayout>
+                  }
+                />
+                <Route
+                  path="/app/log"
+                  element={
+                    <AppLayout>
+                      <LogWorkout />
+                    </AppLayout>
+                  }
+                />
+                <Route
+                  path="/app/log/guided"
+                  element={
+                    <AppLayout>
+                      <GuidedWorkout />
+                    </AppLayout>
+                  }
+                />
+                <Route
+                  path="/app/history"
+                  element={
+                    <AppLayout>
+                      <History />
+                    </AppLayout>
+                  }
+                />
+                <Route
+                  path="/app/plan"
+                  element={
+                    <AppLayout>
+                      <PlanGenerator />
+                    </AppLayout>
+                  }
+                />
+                <Route
+                  path="/app/progress"
+                  element={
+                    <AppLayout>
+                      <Progress />
+                    </AppLayout>
+                  }
+                />
+              </Route>
             </Route>
           </Route>
         </Routes>

@@ -5,6 +5,11 @@ const SCOPES = [
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
+// Google's silent token request doesn't reliably invoke its callback when
+// there's no prior consent to reuse (blocked third-party cookies, no
+// existing grant, etc.) — without a bound, a caller can hang forever.
+const SILENT_TIMEOUT_MS = 5000
+
 type TokenClient = { requestAccessToken: (overrideConfig?: { prompt?: string }) => void }
 
 let tokenClient: TokenClient | null = null
@@ -38,33 +43,62 @@ function ensureTokenClient(): TokenClient | null {
   return tokenClient
 }
 
-function requestToken(prompt: string): Promise<string> {
+function requestToken(prompt: string, timeoutMs?: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = ensureTokenClient()
     if (!client) {
       reject(new Error('Google Sign-In is not configured'))
       return
     }
-    pendingResolve = resolve
-    pendingReject = reject
+
+    // A late callback firing after a timeout already rejected (or vice
+    // versa) must be a no-op, not a second settle.
+    let settled = false
+
+    pendingResolve = (token) => {
+      if (settled) return
+      settled = true
+      resolve(token)
+    }
+    pendingReject = (error) => {
+      if (settled) return
+      settled = true
+      reject(error)
+    }
+
+    if (timeoutMs) {
+      setTimeout(() => {
+        if (settled) return
+        settled = true
+        pendingResolve = null
+        pendingReject = null
+        reject(new Error('Timed out waiting for Google'))
+      }, timeoutMs)
+    }
+
     client.requestAccessToken({ prompt })
   })
 }
 
 /**
- * Returns a valid Sheets/Drive access token, refreshing silently
- * (no popup) if the cached one has expired. Callers needing the initial,
- * explicit consent grant (right after sign-in) should use
- * `requestSheetsAccess` instead.
+ * Returns a valid Sheets/Drive access token, refreshing silently (no popup,
+ * bounded so it can never hang) if the cached one has expired. Never shows
+ * UI — callers must fall back to `requestSheetsAccess` (from a real click)
+ * when this rejects.
  */
 export async function getAccessToken(): Promise<string> {
   if (cachedToken && cachedToken.expiresAt > Date.now()) {
     return cachedToken.accessToken
   }
-  return requestToken('')
+  return requestToken('', SILENT_TIMEOUT_MS)
 }
 
-/** Explicit, interactive consent prompt for the Sheets/Drive scopes — called once right after sign-in. */
+/**
+ * Explicit, interactive consent prompt for the Sheets/Drive scopes. Must be
+ * called synchronously from a real user click (e.g. a button's onClick) —
+ * browsers block popups triggered from anywhere else (a useEffect, a
+ * .then() chain), which is what caused this to hang silently before.
+ */
 export function requestSheetsAccess(): Promise<string> {
   return requestToken('consent')
 }
