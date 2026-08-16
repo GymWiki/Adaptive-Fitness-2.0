@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { listWorkoutsWithDetail } from '../lib/sheets/workouts'
 import type { LoggedSet } from '../lib/progressStats'
 
 export type ExerciseHistory = {
@@ -9,27 +9,17 @@ export type ExerciseHistory = {
   sets: LoggedSet[]
 }
 
-type Row = {
-  id: string
-  exercise_id: string
-  weight_kg: number
-  reps: number
-  rir: number
-  workout: { id: string; performed_at: string }
-  exercise: { id: string; name: string }
-}
-
 /** Every logged set for the current user, grouped by exercise — the input the progress page needs. */
 export function useProgressData() {
-  const { user } = useAuth()
+  const { user, sheetsReady } = useAuth()
   const [histories, setHistories] = useState<ExerciseHistory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !sheetsReady) {
       setHistories([])
-      setLoading(false)
+      setLoading(Boolean(user))
       return
     }
 
@@ -37,39 +27,32 @@ export function useProgressData() {
     setLoading(true)
     setError(false)
 
-    supabase
-      .from('workout_sets')
-      .select(
-        'id, exercise_id, weight_kg, reps, rir, workout:workouts!inner(id, performed_at, user_id), exercise:exercises(id, name)',
-      )
-      .eq('workout.user_id', user.id)
-      .then(({ data, error: fetchError }) => {
+    listWorkoutsWithDetail()
+      .then((workouts) => {
         if (cancelled) return
-        if (fetchError || !data) {
-          setError(true)
-          setLoading(false)
-          return
-        }
 
         const byExercise = new Map<string, ExerciseHistory>()
-        for (const row of data as unknown as Row[]) {
-          const loggedSet: LoggedSet = {
-            setId: row.id,
-            workoutId: row.workout.id,
-            performedAt: row.workout.performed_at,
-            weightKg: row.weight_kg,
-            reps: row.reps,
-            rir: row.rir,
-          }
-          const existing = byExercise.get(row.exercise_id)
-          if (existing) {
-            existing.sets.push(loggedSet)
-          } else {
-            byExercise.set(row.exercise_id, {
-              exerciseId: row.exercise_id,
-              exerciseName: row.exercise.name,
-              sets: [loggedSet],
-            })
+        for (const workout of workouts) {
+          for (const set of workout.workout_sets ?? []) {
+            if (!set.exercise) continue
+            const loggedSet: LoggedSet = {
+              setId: set.id,
+              workoutId: workout.id,
+              performedAt: workout.performed_at,
+              weightKg: set.weight_kg,
+              reps: set.reps,
+              rir: set.rir,
+            }
+            const existing = byExercise.get(set.exercise_id)
+            if (existing) {
+              existing.sets.push(loggedSet)
+            } else {
+              byExercise.set(set.exercise_id, {
+                exerciseId: set.exercise_id,
+                exerciseName: set.exercise.name,
+                sets: [loggedSet],
+              })
+            }
           }
         }
 
@@ -78,11 +61,16 @@ export function useProgressData() {
         )
         setLoading(false)
       })
+      .catch(() => {
+        if (cancelled) return
+        setError(true)
+        setLoading(false)
+      })
 
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, sheetsReady])
 
   return { histories, loading, error }
 }

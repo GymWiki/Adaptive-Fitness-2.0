@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
 import type { Exercise } from '../lib/types'
-import { EXERCISE_COLUMNS } from '../lib/exerciseColumns'
+import { listExercises, insertExercise } from '../lib/sheets/exercises'
 import { Button } from './ui/Button'
 import { Input, Select } from './ui/Input'
 
@@ -13,7 +11,6 @@ type Props = {
 }
 
 export function ExercisePicker({ value, onChange, onSelectExercise }: Props) {
-  const { user } = useAuth()
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
@@ -23,24 +20,17 @@ export function ExercisePicker({ value, onChange, onSelectExercise }: Props) {
   }, [])
 
   async function loadExercises() {
-    const { data } = await supabase.from('exercises').select(EXERCISE_COLUMNS).order('name')
-    if (data) setExercises(data)
+    setExercises(await listExercises())
   }
 
   async function handleAddExercise() {
-    if (!newName.trim() || !user) return
-    const { data, error } = await supabase
-      .from('exercises')
-      .insert({ name: newName.trim(), user_id: user.id })
-      .select(EXERCISE_COLUMNS)
-      .single()
-    if (!error && data) {
-      setExercises((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
-      onChange(data.id)
-      onSelectExercise?.(data)
-      setNewName('')
-      setShowAdd(false)
-    }
+    if (!newName.trim()) return
+    const created = await insertExercise({ name: newName.trim() })
+    setExercises((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
+    onChange(created.id)
+    onSelectExercise?.(created)
+    setNewName('')
+    setShowAdd(false)
   }
 
   function handleSelect(exerciseId: string) {

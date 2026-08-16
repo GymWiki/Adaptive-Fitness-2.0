@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
+import { insertWorkout, insertWorkoutSet, updateWorkoutSet } from '../lib/sheets/workouts'
 import { EXERCISE_CATALOG } from '../lib/programGenerator'
 import type { PlannedExercise } from '../lib/programGenerator'
 import type { Exercise } from '../lib/types'
@@ -22,7 +22,7 @@ import { ErrorState, Spinner } from '../components/ui/States'
 type RouterState = { workoutName?: string; exercises?: PlannedExercise[] } | null
 
 export function GuidedWorkout() {
-  const { user } = useAuth()
+  const { user, sheetsReady } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const { workoutName, exercises: plannedExercises } = (location.state as RouterState) ?? {}
@@ -31,7 +31,7 @@ export function GuidedWorkout() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!user || !plannedExercises) return
+    if (!user || !sheetsReady || !plannedExercises) return
     let cancelled = false
     setError(false)
     setResolved(null)
@@ -39,7 +39,7 @@ export function GuidedWorkout() {
     Promise.all(
       plannedExercises.map((planned) => {
         const kind = EXERCISE_CATALOG.find((p) => p.id === planned.patternId)?.kind ?? 'isolation'
-        return resolveOrCreateExercise(user.id, planned.name, kind)
+        return resolveOrCreateExercise(planned.name, kind)
       }),
     )
       .then((exercises) => {
@@ -53,7 +53,7 @@ export function GuidedWorkout() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, plannedExercises])
+  }, [user, sheetsReady, plannedExercises])
 
   if (!plannedExercises || plannedExercises.length === 0) {
     navigate('/app', { replace: true })
@@ -89,7 +89,6 @@ function GuidedWorkoutSession({
   dayLabel: string
   exercises: Array<{ resolved: Exercise; planned: PlannedExercise }>
 }) {
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [state, dispatch] = useReducer(guidedWorkoutReducer, exercises, createInitialGuidedState)
   const [workoutId, setWorkoutId] = useState<string | null>(null)
@@ -138,14 +137,9 @@ function GuidedWorkoutSession({
 
   async function ensureWorkoutId(): Promise<string> {
     if (workoutId) return workoutId
-    const { data, error } = await supabase
-      .from('workouts')
-      .insert({ user_id: user!.id, name: dayLabel })
-      .select('id')
-      .single()
-    if (error || !data) throw new Error('Could not create workout')
-    setWorkoutId(data.id)
-    return data.id
+    const workout = await insertWorkout(dayLabel)
+    setWorkoutId(workout.id)
+    return workout.id
   }
 
   async function handleConfirmSet() {
@@ -158,20 +152,15 @@ function GuidedWorkoutSession({
     try {
       const currentWorkoutId = await ensureWorkoutId()
       const setOrder = state.exercises.reduce((sum, e) => sum + e.loggedSets.length, 0) + 1
-      const { data, error } = await supabase
-        .from('workout_sets')
-        .insert({
-          workout_id: currentWorkoutId,
-          exercise_id: currentExercise.resolved.id,
-          set_order: setOrder,
-          weight_kg: Number(weight),
-          reps: Number(reps),
-          rir: parseRir(rir),
-        })
-        .select('id')
-        .single()
-      if (error || !data) throw new Error('Could not save set')
-      dispatch({ type: 'SET_LOGGED', setRowId: data.id, weight: Number(weight), reps: Number(reps), rir: parseRir(rir) })
+      const { id } = await insertWorkoutSet({
+        workout_id: currentWorkoutId,
+        exercise_id: currentExercise.resolved.id,
+        set_order: setOrder,
+        weight_kg: Number(weight),
+        reps: Number(reps),
+        rir: parseRir(rir),
+      })
+      dispatch({ type: 'SET_LOGGED', setRowId: id, weight: Number(weight), reps: Number(reps), rir: parseRir(rir) })
     } catch {
       setSaveError('Set opslaan is mislukt. Probeer opnieuw.')
     } finally {
@@ -289,10 +278,7 @@ function GuidedWorkoutSession({
     setRowId: string,
     edited: { weight: number; reps: number; rir: number },
   ) {
-    await supabase
-      .from('workout_sets')
-      .update({ weight_kg: edited.weight, reps: edited.reps, rir: edited.rir })
-      .eq('id', setRowId)
+    await updateWorkoutSet(setRowId, { weight_kg: edited.weight, reps: edited.reps, rir: edited.rir })
   }
 }
 

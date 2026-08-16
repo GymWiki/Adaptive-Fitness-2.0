@@ -9,7 +9,7 @@ import { Select } from '../components/ui/Input'
 import { ErrorState } from '../components/ui/States'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
-import { supabase } from '../lib/supabase'
+import { updateProfile } from '../lib/sheets/profiles'
 
 type GeneratedParams = {
   daysPerWeek: number
@@ -66,17 +66,14 @@ export function PlanGenerator() {
     setAdopting(true)
     setAdoptError('')
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
+    try {
+      await updateProfile(user.id, {
         days_per_week: generatedParams.daysPerWeek,
         equipment: generatedParams.equipment,
         experience_level: generatedParams.experienceLevel,
         goal: generatedParams.goal,
       })
-      .eq('id', user.id)
-
-    if (error) {
+    } catch {
       setAdoptError('Overnemen is mislukt. Probeer opnieuw.')
       setAdopting(false)
       return

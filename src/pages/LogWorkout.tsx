@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { insertWorkout, insertWorkoutSets } from '../lib/sheets/workouts'
 import { useAuth } from '../contexts/AuthContext'
 import { ExercisePicker } from '../components/ExercisePicker'
 import { ExerciseAdvice } from '../components/ExerciseAdvice'
@@ -26,7 +26,7 @@ function emptySet(): DraftSet {
 const RIR_OPTIONS = ['0', '1', '2', '3', '4+']
 
 export function LogWorkout() {
-  const { user } = useAuth()
+  const { user, sheetsReady } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const prefillName = (location.state as { workoutName?: string } | null)?.workoutName ?? ''
@@ -48,7 +48,7 @@ export function LogWorkout() {
   }
 
   async function handleSave() {
-    if (!user) return
+    if (!user || !sheetsReady) return
     const validSets = sets.filter(
       (s) => s.exerciseId && s.weight !== '' && s.reps !== '' && s.rir !== '',
     )
@@ -60,31 +60,20 @@ export function LogWorkout() {
     setSaving(true)
     setError('')
 
-    const { data: workout, error: workoutError } = await supabase
-      .from('workouts')
-      .insert({ user_id: user.id, name: name.trim() || null })
-      .select('id')
-      .single()
-
-    if (workoutError || !workout) {
+    try {
+      const workout = await insertWorkout(name.trim() || null)
+      await insertWorkoutSets(
+        validSets.map((s, index) => ({
+          workout_id: workout.id,
+          exercise_id: s.exerciseId,
+          set_order: index + 1,
+          weight_kg: Number(s.weight),
+          reps: Number(s.reps),
+          rir: s.rir === '4+' ? 4 : Number(s.rir),
+        })),
+      )
+    } catch {
       setError('Opslaan van workout is mislukt. Probeer opnieuw.')
-      setSaving(false)
-      return
-    }
-
-    const rows = validSets.map((s, index) => ({
-      workout_id: workout.id,
-      exercise_id: s.exerciseId,
-      set_order: index + 1,
-      weight_kg: Number(s.weight),
-      reps: Number(s.reps),
-      rir: s.rir === '4+' ? 4 : Number(s.rir),
-    }))
-
-    const { error: setsError } = await supabase.from('workout_sets').insert(rows)
-
-    if (setsError) {
-      setError('Opslaan van sets is mislukt. Probeer opnieuw.')
       setSaving(false)
       return
     }

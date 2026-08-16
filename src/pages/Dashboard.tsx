@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import { listRecentWorkouts } from '../lib/sheets/workouts'
 import type { Workout } from '../lib/types'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -8,26 +9,24 @@ import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { ActiveProgramPanel } from '../components/ActiveProgramPanel'
 
 export function Dashboard() {
+  const { user, sheetsReady } = useAuth()
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    if (!user || !sheetsReady) return
     loadRecentWorkouts()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, sheetsReady])
 
   async function loadRecentWorkouts() {
     setLoading(true)
     setError(false)
-    const { data, error: fetchError } = await supabase
-      .from('workouts')
-      .select('id, name, performed_at, workout_sets(id)')
-      .order('performed_at', { ascending: false })
-      .limit(5)
-    if (fetchError) {
+    try {
+      setWorkouts(await listRecentWorkouts(5))
+    } catch {
       setError(true)
-    } else if (data) {
-      setWorkouts(data as unknown as Workout[])
     }
     setLoading(false)
   }

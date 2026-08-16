@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
-import { supabase } from '../lib/supabase'
+import { updateProfile } from '../lib/sheets/profiles'
 import { generateProgram } from '../lib/programGenerator'
 import type { Equipment, ExperienceLevel, Goal } from '../lib/programGenerator'
 import { EQUIPMENT_LABELS, EXPERIENCE_LABELS, GOAL_LABELS } from '../lib/labels'
@@ -98,9 +98,8 @@ export function Onboarding() {
     setSaving(true)
     setError('')
 
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
+    try {
+      await updateProfile(user.id, {
         display_name: form.displayName.trim() || null,
         weight_kg: form.weightKg ? Number(form.weightKg) : null,
         height_cm: form.heightCm ? Number(form.heightCm) : null,
@@ -112,9 +111,7 @@ export function Onboarding() {
         experience_level: form.experienceLevel,
         onboarding_completed: true,
       })
-      .eq('id', user.id)
-
-    if (updateError) {
+    } catch {
       setError('Opslaan is mislukt. Probeer opnieuw.')
       setSaving(false)
       return

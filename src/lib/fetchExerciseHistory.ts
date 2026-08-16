@@ -1,36 +1,22 @@
-import { supabase } from './supabase'
+import { listWorkoutSetsWithPerformedAt } from './sheets/workouts'
 import type { SessionLog } from './adaptiveAdvice'
 
 /**
  * Loads the last two logged sessions for a specific exercise (most recent
  * first), grouped by workout — the input `adviseNextSession` needs.
  */
-export async function fetchExerciseHistory(
-  userId: string,
-  exerciseId: string,
-): Promise<SessionLog[]> {
-  const { data, error } = await supabase
-    .from('workout_sets')
-    .select('weight_kg, reps, rir, workout:workouts!inner(id, performed_at, user_id)')
-    .eq('exercise_id', exerciseId)
-    .eq('workout.user_id', userId)
-    .order('performed_at', { referencedTable: 'workout', ascending: false })
-
-  if (error || !data) return []
+export async function fetchExerciseHistory(exerciseId: string): Promise<SessionLog[]> {
+  const sets = await listWorkoutSetsWithPerformedAt()
 
   const sessionsByWorkoutId = new Map<string, SessionLog>()
-  for (const row of data as unknown as {
-    weight_kg: number
-    reps: number
-    rir: number
-    workout: { id: string; performed_at: string }
-  }[]) {
-    const existing = sessionsByWorkoutId.get(row.workout.id)
-    const set = { weightKg: row.weight_kg, reps: row.reps, rir: row.rir }
+  for (const set of sets) {
+    if (set.exercise_id !== exerciseId) continue
+    const entry = { weightKg: set.weight_kg, reps: set.reps, rir: set.rir }
+    const existing = sessionsByWorkoutId.get(set.workout_id)
     if (existing) {
-      existing.sets.push(set)
+      existing.sets.push(entry)
     } else {
-      sessionsByWorkoutId.set(row.workout.id, { date: row.workout.performed_at, sets: [set] })
+      sessionsByWorkoutId.set(set.workout_id, { date: set.performed_at, sets: [entry] })
     }
   }
 

@@ -1,41 +1,34 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { getProfile } from '../lib/sheets/profiles'
 import type { Profile } from '../lib/types'
 
-const PROFILE_COLUMNS =
-  'id, display_name, weight_kg, height_cm, gender, birth_year, days_per_week, equipment, experience_level, goal, onboarding_completed'
-
 export function useProfile() {
-  const { user } = useAuth()
+  const { user, sheetsReady } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !sheetsReady) {
       setProfile(null)
-      setLoading(false)
+      // Still loading if signed in and waiting on the sheets session; done otherwise.
+      setLoading(Boolean(user))
       return
     }
 
     let cancelled = false
     setLoading(true)
 
-    supabase
-      .from('profiles')
-      .select(PROFILE_COLUMNS)
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (cancelled) return
-        setProfile(data)
-        setLoading(false)
-      })
+    getProfile(user.id).then((result) => {
+      if (cancelled) return
+      setProfile(result)
+      setLoading(false)
+    })
 
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, sheetsReady])
 
   return { profile, loading }
 }

@@ -7,17 +7,17 @@ import type { Exercise } from '../lib/types'
 
 /** Weight/direction advice for one exercise, shared between the advice banner and the guided workout's weight prefill. */
 export function useExerciseAdvice(exercise: Exercise) {
-  const { user } = useAuth()
+  const { user, sheetsReady } = useAuth()
   const [advice, setAdvice] = useState<Advice | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!user || !sheetsReady) return
     let cancelled = false
     setLoading(true)
 
     async function loadAdvice() {
-      if (!user) return
-      const history = await fetchExerciseHistory(user.id, exercise.id)
+      const history = await fetchExerciseHistory(exercise.id)
       if (cancelled) return
       setAdvice(
         adviseNextSession(
@@ -38,7 +38,7 @@ export function useExerciseAdvice(exercise: Exercise) {
     return () => {
       cancelled = true
     }
-  }, [exercise, user])
+  }, [exercise, user, sheetsReady])
 
   return { advice, loading }
 }

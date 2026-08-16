@@ -29,9 +29,15 @@ export async function getValues(spreadsheetId: string, range: string): Promise<s
 
 /** Appends a single row to the end of the given range. */
 export async function appendRow(spreadsheetId: string, range: string, row: string[]): Promise<void> {
+  await appendRows(spreadsheetId, range, [row])
+}
+
+/** Appends multiple rows in one API call. */
+export async function appendRows(spreadsheetId: string, range: string, rows: string[][]): Promise<void> {
+  if (rows.length === 0) return
   await authedFetch(
     `${SHEETS_BASE}/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=RAW`,
-    { method: 'POST', body: JSON.stringify({ values: [row] }) },
+    { method: 'POST', body: JSON.stringify({ values: rows }) },
   )
 }
 

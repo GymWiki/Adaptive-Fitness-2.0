@@ -1,37 +1,33 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { countWorkouts } from '../lib/sheets/workouts'
 
 /** Total number of workouts the user has ever logged — the cycle's only clock. */
 export function useWorkoutCount() {
-  const { user } = useAuth()
+  const { user, sheetsReady } = useAuth()
   const [count, setCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !sheetsReady) {
       setCount(null)
-      setLoading(false)
+      setLoading(Boolean(user))
       return
     }
 
     let cancelled = false
     setLoading(true)
 
-    supabase
-      .from('workouts')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .then(({ count: total }) => {
-        if (cancelled) return
-        setCount(total ?? 0)
-        setLoading(false)
-      })
+    countWorkouts().then((total) => {
+      if (cancelled) return
+      setCount(total)
+      setLoading(false)
+    })
 
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [user, sheetsReady])
 
   return { count, loading }
 }

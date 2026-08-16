@@ -1,31 +1,29 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+import { listWorkoutsWithDetail } from '../lib/sheets/workouts'
 import type { Workout } from '../lib/types'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 
 export function History() {
+  const { user, sheetsReady } = useAuth()
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!user || !sheetsReady) return
     loadWorkouts()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, sheetsReady])
 
   async function loadWorkouts() {
     setLoading(true)
     setError(false)
-    const { data, error: fetchError } = await supabase
-      .from('workouts')
-      .select(
-        'id, name, performed_at, workout_sets(id, weight_kg, reps, rir, set_order, exercise:exercises(id, name, muscle_group))',
-      )
-      .order('performed_at', { ascending: false })
-    if (fetchError) {
+    try {
+      setWorkouts(await listWorkoutsWithDetail())
+    } catch {
       setError(true)
-    } else if (data) {
-      setWorkouts(data as unknown as Workout[])
     }
     setLoading(false)
   }

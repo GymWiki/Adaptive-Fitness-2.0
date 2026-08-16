@@ -1,4 +1,4 @@
-import { appendRow, deleteRow, updateRow } from './sheetsClient'
+import { appendRow, appendRows, deleteRow, updateRow } from './sheetsClient'
 import { columnLetter, objectToRow, rowsToObjects } from './rowMapping'
 import type { SheetRow } from './rowMapping'
 import { getTab, invalidateTab } from './sheetsStore'
@@ -41,6 +41,15 @@ export async function insert(tab: string, record: SheetRow): Promise<SheetRow> {
   await appendRow(spreadsheetId, tab, objectToRow(header, record))
   invalidateTab(tab)
   return record
+}
+
+export async function insertMany(tab: string, records: SheetRow[]): Promise<SheetRow[]> {
+  if (records.length === 0) return []
+  const { spreadsheetId } = getSheetsSession()
+  const [header = []] = await getTab(tab)
+  await appendRows(spreadsheetId, tab, records.map((record) => objectToRow(header, record)))
+  invalidateTab(tab)
+  return records
 }
 
 export async function update(tab: string, id: string, patch: SheetRow): Promise<SheetRow> {
