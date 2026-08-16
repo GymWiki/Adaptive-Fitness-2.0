@@ -12,7 +12,7 @@ export function ActiveProgramPanel() {
 
   const cycleState = useMemo(() => {
     if (!program || count === null) return null
-    return computeCycleState(program.week, count)
+    return computeCycleState(program.week, count, (slot) => slot.type === 'strength')
   }, [program, count])
 
   useEffect(() => {
@@ -27,7 +27,12 @@ export function ActiveProgramPanel() {
 
   return (
     <div className="mb-8">
-      <h2 className="font-display text-lg font-bold text-ink">{program.templateName}</h2>
+      <h2 className="font-display text-lg font-bold text-ink">{program.strengthProgram.templateName}</h2>
+      {program.runningPlan && (
+        <p className="mt-0.5 text-xs text-ink-faint">
+          Hardlopen: {program.runningPlan.weekLabel} · {program.runningPlan.totalDistanceKm} km deze week
+        </p>
+      )}
       <div className="mt-3">
         <DaySlider
           week={program.week}

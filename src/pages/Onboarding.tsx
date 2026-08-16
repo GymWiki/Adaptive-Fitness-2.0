@@ -3,14 +3,43 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { updateProfile } from '../lib/sheets/profiles'
-import { generateProgram } from '../lib/programGenerator'
-import type { Equipment, ExperienceLevel, Goal } from '../lib/programGenerator'
-import { EQUIPMENT_LABELS, EXPERIENCE_LABELS, GOAL_LABELS } from '../lib/labels'
+import { generateCombinedSchedule } from '../lib/combinedSchedule/generateCombinedSchedule'
+import type {
+  FocusSpecifics,
+  HybridRatio,
+  PrimaryFocus,
+  RaceDistance,
+  RunningExperienceLevel,
+  SessionDuration,
+  StrengthFocusZone,
+  Weekday,
+} from '../lib/combinedSchedule/types'
+import type { Equipment, ExperienceLevel } from '../lib/programGenerator'
+import {
+  EQUIPMENT_LABELS,
+  EXPERIENCE_LABELS,
+  HYBRID_RATIO_LABELS,
+  PRIMARY_FOCUS_DESCRIPTIONS,
+  PRIMARY_FOCUS_LABELS,
+  RACE_DISTANCE_LABELS,
+  RUNNING_EXPERIENCE_LABELS,
+  SESSION_DURATION_LABELS,
+  STRENGTH_FOCUS_ZONE_LABELS,
+  WEEKDAY_LABELS,
+} from '../lib/labels'
 import { Button } from '../components/ui/Button'
 import { Input, Select } from '../components/ui/Input'
 import { ErrorState, Spinner } from '../components/ui/States'
+import { CombinedWeekList } from '../components/CombinedWeekList'
 
-const TOTAL_STEPS = 5
+type StepId = 'about' | 'focus' | 'specifics' | 'practical'
+
+function stepsFor(primaryFocus: PrimaryFocus | ''): StepId[] {
+  const steps: StepId[] = ['about', 'focus']
+  if (primaryFocus && primaryFocus !== 'general_health') steps.push('specifics')
+  steps.push('practical')
+  return steps
+}
 
 type FormState = {
   displayName: string
@@ -18,10 +47,17 @@ type FormState = {
   heightCm: string
   gender: 'male' | 'female' | 'other' | ''
   birthYear: string
-  goal: Goal
-  daysPerWeek: number
-  equipment: Equipment
-  experienceLevel: ExperienceLevel
+  primaryFocus: PrimaryFocus | ''
+  strengthFocusZone: StrengthFocusZone | ''
+  hybridRatio: HybridRatio | ''
+  raceDistance: RaceDistance | ''
+  raceDistanceCustom: string
+  raceDate: string
+  availableDays: Weekday[]
+  sessionDuration: SessionDuration | ''
+  runningExperienceLevel: RunningExperienceLevel | ''
+  experienceLevel: ExperienceLevel | ''
+  equipment: Equipment | ''
 }
 
 const initialForm: FormState = {
@@ -30,11 +66,20 @@ const initialForm: FormState = {
   heightCm: '',
   gender: '',
   birthYear: '',
-  goal: 'hypertrophy',
-  daysPerWeek: 3,
-  equipment: 'full_gym',
-  experienceLevel: 'beginner',
+  primaryFocus: '',
+  strengthFocusZone: '',
+  hybridRatio: '',
+  raceDistance: '',
+  raceDistanceCustom: '',
+  raceDate: '',
+  availableDays: [],
+  sessionDuration: '',
+  runningExperienceLevel: '',
+  experienceLevel: '',
+  equipment: '',
 }
+
+const WEEKDAYS: Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 function OptionButton({
   selected,
@@ -60,12 +105,59 @@ function OptionButton({
   )
 }
 
+function buildFocusSpecifics(form: FormState): FocusSpecifics | null {
+  if (form.primaryFocus === 'strength') {
+    if (!form.strengthFocusZone) return null
+    return { primaryFocus: 'strength', strengthFocusZone: form.strengthFocusZone }
+  }
+  if (form.primaryFocus === 'hybrid') {
+    if (!form.hybridRatio) return null
+    return { primaryFocus: 'hybrid', hybridRatio: form.hybridRatio }
+  }
+  if (form.primaryFocus === 'running') {
+    if (!form.raceDistance) return null
+    return {
+      primaryFocus: 'running',
+      raceDistance: form.raceDistance,
+      raceDistanceCustom: form.raceDistance === 'custom' ? form.raceDistanceCustom.trim() || null : null,
+      raceDate: form.raceDate || null,
+    }
+  }
+  if (form.primaryFocus === 'general_health') {
+    return { primaryFocus: 'general_health' }
+  }
+  return null
+}
+
+function canProceed(stepId: StepId, form: FormState): boolean {
+  if (stepId === 'focus') return form.primaryFocus !== ''
+  if (stepId === 'specifics') {
+    if (form.primaryFocus === 'strength') return form.strengthFocusZone !== ''
+    if (form.primaryFocus === 'hybrid') return form.hybridRatio !== ''
+    if (form.primaryFocus === 'running') {
+      return form.raceDistance !== '' && (form.raceDistance !== 'custom' || form.raceDistanceCustom.trim() !== '')
+    }
+    return true
+  }
+  if (stepId === 'practical') {
+    return (
+      form.availableDays.length >= 2 &&
+      form.availableDays.length <= 6 &&
+      form.sessionDuration !== '' &&
+      form.runningExperienceLevel !== '' &&
+      form.experienceLevel !== '' &&
+      form.equipment !== ''
+    )
+  }
+  return true
+}
+
 export function Onboarding() {
   const { user } = useAuth()
   const { profile, loading } = useProfile()
   const navigate = useNavigate()
 
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
   const [phase, setPhase] = useState<'steps' | 'result'>('steps')
   const [form, setForm] = useState<FormState>(initialForm)
   const [saving, setSaving] = useState(false)
@@ -81,8 +173,20 @@ export function Onboarding() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function toggleDay(day: Weekday) {
+    setForm((prev) => ({
+      ...prev,
+      availableDays: prev.availableDays.includes(day)
+        ? prev.availableDays.filter((d) => d !== day)
+        : [...prev.availableDays, day],
+    }))
+  }
+
+  const steps = stepsFor(form.primaryFocus)
+  const currentStepId = steps[step]
+
   function goNext() {
-    if (step < TOTAL_STEPS) {
+    if (step < steps.length - 1) {
       setStep((s) => s + 1)
     } else {
       setPhase('result')
@@ -90,7 +194,7 @@ export function Onboarding() {
   }
 
   function goBack() {
-    setStep((s) => Math.max(1, s - 1))
+    setStep((s) => Math.max(0, s - 1))
   }
 
   async function handleFinish() {
@@ -105,10 +209,17 @@ export function Onboarding() {
         height_cm: form.heightCm ? Number(form.heightCm) : null,
         gender: form.gender || null,
         birth_year: form.birthYear ? Number(form.birthYear) : null,
-        goal: form.goal,
-        days_per_week: form.daysPerWeek,
-        equipment: form.equipment,
-        experience_level: form.experienceLevel,
+        primary_focus: form.primaryFocus || null,
+        strength_focus_zone: form.strengthFocusZone || null,
+        hybrid_ratio: form.hybridRatio || null,
+        target_race_distance: form.raceDistance || null,
+        target_race_distance_custom: form.raceDistanceCustom.trim() || null,
+        target_race_date: form.raceDate || null,
+        available_days: form.availableDays,
+        session_duration: form.sessionDuration || null,
+        running_experience_level: form.runningExperienceLevel || null,
+        equipment: form.equipment || null,
+        experience_level: form.experienceLevel || null,
         onboarding_completed: true,
       })
     } catch {
@@ -121,19 +232,31 @@ export function Onboarding() {
   }
 
   if (phase === 'result') {
-    const program = generateProgram(form.daysPerWeek, form.equipment, form.experienceLevel, form.goal)
+    const specifics = buildFocusSpecifics(form)
+    const program =
+      specifics && form.equipment && form.experienceLevel && form.runningExperienceLevel
+        ? generateCombinedSchedule(
+            form.primaryFocus as PrimaryFocus,
+            specifics,
+            form.availableDays,
+            form.equipment,
+            form.experienceLevel,
+            form.runningExperienceLevel,
+            new Date(),
+          )
+        : null
+
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16 text-center">
-        <h1 className="font-display text-2xl font-bold">Klaar!</h1>
-        <p className="mt-4 text-ink-dim">
-          Jouw schema: <strong className="text-ink">{form.daysPerWeek} dagen/week</strong>,{' '}
-          {program.templateName}
-        </p>
-        {program.experienceWarning && (
-          <p className="mt-3 rounded-lg bg-warning/15 px-3 py-2 text-xs text-warning">
-            {program.experienceWarning}
-          </p>
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <h1 className="text-center font-display text-2xl font-bold">Klaar!</h1>
+        <p className="mt-2 text-center text-ink-dim">Jouw schema, op basis van je antwoorden:</p>
+
+        {program && (
+          <div className="mt-6">
+            <CombinedWeekList program={program} />
+          </div>
         )}
+
         {error && (
           <div className="mt-4">
             <ErrorState message={error} />
@@ -149,19 +272,19 @@ export function Onboarding() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
       <p className="text-center text-sm font-semibold text-ink-dim">
-        Stap {step} van {TOTAL_STEPS}
+        Stap {step + 1} van {steps.length}
       </p>
       <div className="mt-3 flex gap-1.5">
-        {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+        {steps.map((id, i) => (
           <div
-            key={i}
-            className={`h-1.5 flex-1 rounded-full ${i < step ? 'bg-accent' : 'bg-surface-2'}`}
+            key={id}
+            className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-accent' : 'bg-surface-2'}`}
           />
         ))}
       </div>
 
       <div className="mt-10">
-        {step === 1 && (
+        {currentStepId === 'about' && (
           <div className="flex flex-col gap-3">
             <h1 className="font-display text-xl font-bold">Over jou</h1>
             <p className="text-sm text-ink-dim">Allemaal optioneel — vul in wat je wilt.</p>
@@ -208,79 +331,184 @@ export function Onboarding() {
           </div>
         )}
 
-        {step === 2 && (
+        {currentStepId === 'focus' && (
           <div className="flex flex-col gap-3">
-            <h1 className="font-display text-xl font-bold">Wat is je doel?</h1>
+            <h1 className="font-display text-xl font-bold">Wat is je primaire focus?</h1>
             <p className="text-sm text-ink-dim">
-              Bepaalt reps, RIR, volume en of er cardio wordt toegevoegd — niet welk schema je
-              krijgt.
+              Dit is het dominante anker — het voorkomt conflicterende trainingsprikkels.
             </p>
-            {(Object.keys(GOAL_LABELS) as Goal[]).map((key) => (
-              <OptionButton key={key} selected={form.goal === key} onClick={() => update('goal', key)}>
-                {GOAL_LABELS[key]}
+            {(Object.keys(PRIMARY_FOCUS_LABELS) as PrimaryFocus[]).map((key) => (
+              <OptionButton
+                key={key}
+                selected={form.primaryFocus === key}
+                onClick={() => update('primaryFocus', key)}
+              >
+                <span className="block">{PRIMARY_FOCUS_LABELS[key]}</span>
+                <span className="mt-0.5 block text-xs font-normal text-ink-dim">
+                  {PRIMARY_FOCUS_DESCRIPTIONS[key]}
+                </span>
               </OptionButton>
             ))}
           </div>
         )}
 
-        {step === 3 && (
+        {currentStepId === 'specifics' && form.primaryFocus === 'strength' && (
           <div className="flex flex-col gap-3">
-            <h1 className="font-display text-xl font-bold">
-              Hoeveel dagen per week wil je trainen?
-            </h1>
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <OptionButton
-                  key={n}
-                  selected={form.daysPerWeek === n}
-                  onClick={() => update('daysPerWeek', n)}
-                >
-                  <span className="block text-center">{n}</span>
-                </OptionButton>
-              ))}
+            <h1 className="font-display text-xl font-bold">Focuszone</h1>
+            {(Object.keys(STRENGTH_FOCUS_ZONE_LABELS) as StrengthFocusZone[]).map((key) => (
+              <OptionButton
+                key={key}
+                selected={form.strengthFocusZone === key}
+                onClick={() => update('strengthFocusZone', key)}
+              >
+                {STRENGTH_FOCUS_ZONE_LABELS[key]}
+              </OptionButton>
+            ))}
+          </div>
+        )}
+
+        {currentStepId === 'specifics' && form.primaryFocus === 'hybrid' && (
+          <div className="flex flex-col gap-3">
+            <h1 className="font-display text-xl font-bold">Gewenste verhouding kracht : hardlopen</h1>
+            {(Object.keys(HYBRID_RATIO_LABELS) as HybridRatio[]).map((key) => (
+              <OptionButton
+                key={key}
+                selected={form.hybridRatio === key}
+                onClick={() => update('hybridRatio', key)}
+              >
+                {HYBRID_RATIO_LABELS[key]}
+              </OptionButton>
+            ))}
+          </div>
+        )}
+
+        {currentStepId === 'specifics' && form.primaryFocus === 'running' && (
+          <div className="flex flex-col gap-3">
+            <h1 className="font-display text-xl font-bold">Doelafstand</h1>
+            {(Object.keys(RACE_DISTANCE_LABELS) as RaceDistance[]).map((key) => (
+              <OptionButton
+                key={key}
+                selected={form.raceDistance === key}
+                onClick={() => update('raceDistance', key)}
+              >
+                {RACE_DISTANCE_LABELS[key]}
+              </OptionButton>
+            ))}
+            {form.raceDistance === 'custom' && (
+              <Input
+                value={form.raceDistanceCustom}
+                onChange={(e) => update('raceDistanceCustom', e.target.value)}
+                placeholder="Welke afstand?"
+              />
+            )}
+            <label className="mt-2 flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
+              Streefdatum (optioneel)
+              <Input
+                type="date"
+                value={form.raceDate}
+                onChange={(e) => update('raceDate', e.target.value)}
+              />
+            </label>
+          </div>
+        )}
+
+        {currentStepId === 'practical' && (
+          <div className="flex flex-col gap-5">
+            <h1 className="font-display text-xl font-bold">Praktische randvoorwaarden</h1>
+
+            <div>
+              <p className="text-sm font-semibold text-ink-dim">
+                Beschikbare dagen (min. 2, max. 6)
+              </p>
+              <div className="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-7">
+                {WEEKDAYS.map((day) => (
+                  <OptionButton
+                    key={day}
+                    selected={form.availableDays.includes(day)}
+                    onClick={() => toggleDay(day)}
+                  >
+                    <span className="block text-center">{WEEKDAY_LABELS[day]}</span>
+                  </OptionButton>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
 
-        {step === 4 && (
-          <div className="flex flex-col gap-3">
-            <h1 className="font-display text-xl font-bold">Welke apparatuur heb je?</h1>
-            {(Object.keys(EQUIPMENT_LABELS) as Equipment[]).map((key) => (
-              <OptionButton
-                key={key}
-                selected={form.equipment === key}
-                onClick={() => update('equipment', key)}
+            <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
+              Sessieduur
+              <Select
+                value={form.sessionDuration}
+                onChange={(e) => update('sessionDuration', e.target.value as SessionDuration)}
               >
-                {EQUIPMENT_LABELS[key]}
-              </OptionButton>
-            ))}
-          </div>
-        )}
+                <option value="" disabled>
+                  Kies een duur
+                </option>
+                {(Object.keys(SESSION_DURATION_LABELS) as SessionDuration[]).map((key) => (
+                  <option key={key} value={key}>
+                    {SESSION_DURATION_LABELS[key]}
+                  </option>
+                ))}
+              </Select>
+            </label>
 
-        {step === 5 && (
-          <div className="flex flex-col gap-3">
-            <h1 className="font-display text-xl font-bold">Wat is je trainingservaring?</h1>
-            {(Object.keys(EXPERIENCE_LABELS) as ExperienceLevel[]).map((key) => (
-              <OptionButton
-                key={key}
-                selected={form.experienceLevel === key}
-                onClick={() => update('experienceLevel', key)}
+            <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
+              Ervaringsniveau hardlopen
+              <Select
+                value={form.runningExperienceLevel}
+                onChange={(e) => update('runningExperienceLevel', e.target.value as RunningExperienceLevel)}
               >
-                {EXPERIENCE_LABELS[key]}
-              </OptionButton>
-            ))}
+                <option value="" disabled>
+                  Kies je niveau
+                </option>
+                {(Object.keys(RUNNING_EXPERIENCE_LABELS) as RunningExperienceLevel[]).map((key) => (
+                  <option key={key} value={key}>
+                    {RUNNING_EXPERIENCE_LABELS[key]}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
+              Ervaringsniveau kracht
+              <Select
+                value={form.experienceLevel}
+                onChange={(e) => update('experienceLevel', e.target.value as ExperienceLevel)}
+              >
+                <option value="" disabled>
+                  Kies je niveau
+                </option>
+                {(Object.keys(EXPERIENCE_LABELS) as ExperienceLevel[]).map((key) => (
+                  <option key={key} value={key}>
+                    {EXPERIENCE_LABELS[key]}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
+              Apparatuur
+              <Select value={form.equipment} onChange={(e) => update('equipment', e.target.value as Equipment)}>
+                <option value="" disabled>
+                  Kies je apparatuur
+                </option>
+                {(Object.keys(EQUIPMENT_LABELS) as Equipment[]).map((key) => (
+                  <option key={key} value={key}>
+                    {EQUIPMENT_LABELS[key]}
+                  </option>
+                ))}
+              </Select>
+            </label>
           </div>
         )}
       </div>
 
       <div className="mt-10 flex gap-2">
-        {step > 1 && (
+        {step > 0 && (
           <Button variant="secondary" onClick={goBack}>
             Vorige
           </Button>
         )}
-        <Button onClick={goNext} fullWidth>
-          {step < TOTAL_STEPS ? 'Volgende' : 'Bekijk mijn schema'}
+        <Button onClick={goNext} disabled={!canProceed(currentStepId, form)} fullWidth>
+          {step < steps.length - 1 ? 'Volgende' : 'Bekijk mijn schema'}
         </Button>
       </div>
     </div>

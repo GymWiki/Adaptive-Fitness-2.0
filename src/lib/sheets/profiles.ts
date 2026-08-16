@@ -1,8 +1,13 @@
 import { find, update } from './sheetsTable'
 import type { SheetRow } from './rowMapping'
 import type { Profile } from '../types'
+import type { Weekday } from '../combinedSchedule/types'
 
 const TAB = 'profiles'
+
+function parseWeekdays(value: string): Weekday[] {
+  return value ? (value.split(',').filter(Boolean) as Weekday[]) : []
+}
 
 export function toProfile(row: SheetRow): Profile {
   return {
@@ -12,8 +17,15 @@ export function toProfile(row: SheetRow): Profile {
     height_cm: row.height_cm ? Number(row.height_cm) : null,
     gender: (row.gender || null) as Profile['gender'],
     birth_year: row.birth_year ? Number(row.birth_year) : null,
-    goal: (row.goal || null) as Profile['goal'],
-    days_per_week: row.days_per_week ? Number(row.days_per_week) : null,
+    primary_focus: (row.primary_focus || null) as Profile['primary_focus'],
+    strength_focus_zone: (row.strength_focus_zone || null) as Profile['strength_focus_zone'],
+    hybrid_ratio: (row.hybrid_ratio || null) as Profile['hybrid_ratio'],
+    target_race_distance: (row.target_race_distance || null) as Profile['target_race_distance'],
+    target_race_distance_custom: row.target_race_distance_custom || null,
+    target_race_date: row.target_race_date || null,
+    available_days: parseWeekdays(row.available_days),
+    session_duration: (row.session_duration || null) as Profile['session_duration'],
+    running_experience_level: (row.running_experience_level || null) as Profile['running_experience_level'],
     equipment: (row.equipment || null) as Profile['equipment'],
     experience_level: (row.experience_level || null) as Profile['experience_level'],
     onboarding_completed: row.onboarding_completed === 'true',
@@ -27,9 +39,18 @@ export function fromProfilePatch(patch: Partial<Profile>): SheetRow {
   if ('height_cm' in patch) row.height_cm = patch.height_cm != null ? String(patch.height_cm) : ''
   if ('gender' in patch) row.gender = patch.gender ?? ''
   if ('birth_year' in patch) row.birth_year = patch.birth_year != null ? String(patch.birth_year) : ''
-  if ('goal' in patch) row.goal = patch.goal ?? ''
-  if ('days_per_week' in patch) {
-    row.days_per_week = patch.days_per_week != null ? String(patch.days_per_week) : ''
+  if ('primary_focus' in patch) row.primary_focus = patch.primary_focus ?? ''
+  if ('strength_focus_zone' in patch) row.strength_focus_zone = patch.strength_focus_zone ?? ''
+  if ('hybrid_ratio' in patch) row.hybrid_ratio = patch.hybrid_ratio ?? ''
+  if ('target_race_distance' in patch) row.target_race_distance = patch.target_race_distance ?? ''
+  if ('target_race_distance_custom' in patch) {
+    row.target_race_distance_custom = patch.target_race_distance_custom ?? ''
+  }
+  if ('target_race_date' in patch) row.target_race_date = patch.target_race_date ?? ''
+  if ('available_days' in patch) row.available_days = (patch.available_days ?? []).join(',')
+  if ('session_duration' in patch) row.session_duration = patch.session_duration ?? ''
+  if ('running_experience_level' in patch) {
+    row.running_experience_level = patch.running_experience_level ?? ''
   }
   if ('equipment' in patch) row.equipment = patch.equipment ?? ''
   if ('experience_level' in patch) row.experience_level = patch.experience_level ?? ''

@@ -1,5 +1,3 @@
-import type { DaySlot } from './programGenerator'
-
 export type CycleState = {
   /** Index (0-6) into `week` that should be selected by default. */
   recommendedIndex: number
@@ -10,14 +8,21 @@ export type CycleState = {
 /**
  * Determines where the user is in their template's repeating cycle, using
  * only the total number of logged workouts — no calendar dates involved.
- * Each logged workout is assumed to complete "the next training day in the
- * cycle"; rest/active-recovery slots are never "done", they're just passed
- * through, so the recommended day can land on one of those.
+ * Each logged workout is assumed to complete "the next loggable day in the
+ * cycle" (per `isTrainingDay`); every other slot is never "done", it's just
+ * passed through, so the recommended day can land on one of those. Generic
+ * over the slot type so it works for both a plain strength `WeekProgram`
+ * ('training' slots) and a combined running+strength week ('strength'
+ * slots — running days are informational-only, never loggable).
  */
-export function computeCycleState(week: DaySlot[], totalWorkoutsLogged: number): CycleState {
+export function computeCycleState<T>(
+  week: T[],
+  totalWorkoutsLogged: number,
+  isTrainingDay: (day: T) => boolean,
+): CycleState {
   const trainingIndices: number[] = []
   week.forEach((day, index) => {
-    if (day.type === 'training') trainingIndices.push(index)
+    if (isTrainingDay(day)) trainingIndices.push(index)
   })
 
   const doneInCycle = week.map(() => false)

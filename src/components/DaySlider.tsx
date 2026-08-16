@@ -1,19 +1,10 @@
 import { useEffect, useRef } from 'react'
-import type { DaySlot } from '../lib/programGenerator'
+import type { CombinedDaySlot } from '../lib/combinedSchedule/types'
 
 function DumbbellIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
       <path d="M4 12h16M4 9.5v5M2.5 10.5v3M7 8v8M17 8v8M21.5 10.5v3" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function LeafIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-      <path d="M5 19c8-1 13-6 14-14-8 1-13 6-14 14z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 19c2-4 5-7 9-9" strokeLinecap="round" />
     </svg>
   )
 }
@@ -26,30 +17,33 @@ function MoonIcon() {
   )
 }
 
-function HeartPulseIcon() {
+function RunIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-      <path d="M3 12h4l2-4 3 7 2-5 1.5 2H21" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="15.5" cy="4.5" r="1.5" fill="currentColor" stroke="none" />
+      <path
+        d="M13 8l3 3-1.5 5M13 8l-4 1.5 1 3.5-3 4M13 8l3-2.5 3 2M9 12.5l4 1.5 3 4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
 
-function dayIcon(day: DaySlot) {
-  if (day.type === 'rest') return <MoonIcon />
-  if (day.type === 'active_recovery') return <LeafIcon />
-  if (day.type === 'cardio') return <HeartPulseIcon />
+function dayIcon(slot: CombinedDaySlot) {
+  if (slot.type === 'rest') return <MoonIcon />
+  if (slot.type === 'running') return <RunIcon />
   return <DumbbellIcon />
 }
 
-function dayLabel(day: DaySlot) {
-  if (day.type === 'rest') return 'Rust'
-  if (day.type === 'active_recovery') return 'Herstel'
-  if (day.type === 'cardio') return 'Cardio'
-  return day.label
+function dayLabel(slot: CombinedDaySlot) {
+  if (slot.type === 'rest') return 'Rust'
+  if (slot.type === 'running') return slot.session.label
+  return slot.day.label
 }
 
 type Props = {
-  week: DaySlot[]
+  week: CombinedDaySlot[]
   selectedIndex: number
   recommendedIndex: number
   doneInCycle: boolean[]
@@ -69,7 +63,7 @@ export function DaySlider({ week, selectedIndex, recommendedIndex, doneInCycle, 
 
   return (
     <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
-      {week.map((day, index) => {
+      {week.map((slot, index) => {
         const isSelected = index === selectedIndex
         const isRecommended = index === recommendedIndex
         const isDone = doneInCycle[index]
@@ -106,9 +100,9 @@ export function DaySlider({ week, selectedIndex, recommendedIndex, doneInCycle, 
                 }`}
               />
             )}
-            {dayIcon(day)}
+            {dayIcon(slot)}
             <span className="line-clamp-2 text-[11px] font-semibold leading-tight">
-              {dayLabel(day)}
+              {dayLabel(slot)}
             </span>
           </button>
         )

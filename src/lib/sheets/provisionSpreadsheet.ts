@@ -3,8 +3,12 @@ import {
   createSpreadsheet,
   findSpreadsheetByName,
   getSheetIdByTab,
+  getValues,
+  updateRow,
 } from './sheetsClient'
 import { setSheetsSession } from './sheetsSession'
+import { missingColumns } from './headerMigration'
+import { columnLetter } from './rowMapping'
 import type { GoogleUser } from '../googleAuth'
 
 const SPREADSHEET_NAME = 'Fitness Log — Data'
@@ -17,8 +21,15 @@ export const TAB_HEADERS = {
     'height_cm',
     'gender',
     'birth_year',
-    'goal',
-    'days_per_week',
+    'primary_focus',
+    'strength_focus_zone',
+    'hybrid_ratio',
+    'target_race_distance',
+    'target_race_distance_custom',
+    'target_race_date',
+    'available_days',
+    'session_duration',
+    'running_experience_level',
     'equipment',
     'experience_level',
     'onboarding_completed',
@@ -84,17 +95,27 @@ async function seedNewSpreadsheet(spreadsheetId: string, user: GoogleUser): Prom
 
   await appendRow(spreadsheetId, 'profiles', [
     user.id,
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
-    '',
+    ...Array(TAB_HEADERS.profiles.length - 2).fill(''),
     'false',
   ])
+}
+
+/**
+ * Patches an already-provisioned spreadsheet's header rows to include any
+ * columns the schema has since gained — appended at the end, existing
+ * columns/data untouched. Runs every time, cheap no-op when nothing changed.
+ * See docs/superpowers/specs/2026-08-02-running-plus-strength-design.md §1.
+ */
+async function ensureHeaderColumns(spreadsheetId: string): Promise<void> {
+  for (const [tab, expectedHeader] of Object.entries(TAB_HEADERS)) {
+    const [actualHeader = []] = await getValues(spreadsheetId, `${tab}!1:1`)
+    const missing = missingColumns(actualHeader, expectedHeader)
+    if (missing.length === 0) continue
+
+    const newHeader = [...actualHeader, ...missing]
+    const range = `${tab}!A1:${columnLetter(newHeader.length - 1)}1`
+    await updateRow(spreadsheetId, range, newHeader)
+  }
 }
 
 /**
@@ -108,6 +129,7 @@ export async function provisionSpreadsheet(user: GoogleUser): Promise<void> {
   const cachedId = localStorage.getItem(key)
 
   if (cachedId) {
+    await ensureHeaderColumns(cachedId)
     const sheetIdByTab = await getSheetIdByTab(cachedId)
     setSheetsSession({ spreadsheetId: cachedId, sheetIdByTab })
     return
@@ -116,6 +138,7 @@ export async function provisionSpreadsheet(user: GoogleUser): Promise<void> {
   const foundId = await findSpreadsheetByName(SPREADSHEET_NAME)
   if (foundId) {
     localStorage.setItem(key, foundId)
+    await ensureHeaderColumns(foundId)
     const sheetIdByTab = await getSheetIdByTab(foundId)
     setSheetsSession({ spreadsheetId: foundId, sheetIdByTab })
     return

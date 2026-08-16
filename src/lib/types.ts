@@ -33,9 +33,16 @@ export type Profile = {
   height_cm: number | null
   gender: 'male' | 'female' | 'other' | null
   birth_year: number | null
-  days_per_week: number | null
+  primary_focus: import('./combinedSchedule/types').PrimaryFocus | null
+  strength_focus_zone: import('./combinedSchedule/types').StrengthFocusZone | null
+  hybrid_ratio: import('./combinedSchedule/types').HybridRatio | null
+  target_race_distance: import('./combinedSchedule/types').RaceDistance | null
+  target_race_distance_custom: string | null
+  target_race_date: string | null
+  available_days: import('./combinedSchedule/types').Weekday[]
+  session_duration: import('./combinedSchedule/types').SessionDuration | null
+  running_experience_level: import('./combinedSchedule/types').RunningExperienceLevel | null
   equipment: 'full_gym' | 'home_dumbbells' | 'bodyweight_only' | null
   experience_level: 'beginner' | 'intermediate' | 'advanced' | null
-  goal: 'hypertrophy' | 'strength' | 'fat_loss' | 'conditioning' | 'mix' | null
   onboarding_completed: boolean
 }
