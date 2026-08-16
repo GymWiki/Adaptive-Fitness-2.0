@@ -3,11 +3,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { Spinner } from './ui/States'
 
 export function ProtectedRoute() {
-  const { session, loading } = useAuth()
+  const { user, loading } = useAuth()
 
   if (loading) return <Spinner />
 
-  if (!session) {
+  if (!user) {
     return <Navigate to="/login" replace />
   }
 

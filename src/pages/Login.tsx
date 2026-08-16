@@ -1,29 +1,19 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Button } from '../components/ui/Button'
-import { Input } from '../components/ui/Input'
+import { hasGoogleClientId, onGoogleScriptReady, renderGoogleButton } from '../lib/googleAuth'
 import { ErrorState } from '../components/ui/States'
 
 export function Login() {
-  const { session, signInWithEmail } = useAuth()
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState('')
+  const { user, authError } = useAuth()
+  const buttonRef = useRef<HTMLDivElement>(null)
 
-  if (session) return <Navigate to="/app" replace />
+  useEffect(() => {
+    if (!buttonRef.current) return
+    return onGoogleScriptReady(() => renderGoogleButton(buttonRef.current!))
+  }, [])
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setStatus('sending')
-    const { error } = await signInWithEmail(email)
-    if (error) {
-      setErrorMessage(error)
-      setStatus('error')
-    } else {
-      setStatus('sent')
-    }
-  }
+  if (user) return <Navigate to="/app" replace />
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
@@ -31,29 +21,16 @@ export function Login() {
         Fitness Log
       </Link>
       <h1 className="text-center font-display text-2xl font-bold">Inloggen</h1>
-      <p className="mt-2 text-center text-sm text-ink-dim">
-        Geen wachtwoord nodig — we sturen je een inloglink.
-      </p>
+      <p className="mt-2 text-center text-sm text-ink-dim">Log in met je Google-account.</p>
 
-      {status === 'sent' ? (
-        <div className="mt-6 rounded-xl border border-accent/30 bg-accent/10 p-4 text-center text-sm text-ink">
-          Check je mail! We hebben een inloglink gestuurd naar <strong>{email}</strong>.
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
-          <Input
-            type="email"
-            required
-            placeholder="jij@voorbeeld.nl"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button type="submit" disabled={status === 'sending'} fullWidth>
-            {status === 'sending' ? 'Bezig...' : 'Stuur inloglink'}
-          </Button>
-          {status === 'error' && <ErrorState message={errorMessage} />}
-        </form>
-      )}
+      <div className="mt-6 flex flex-col items-center gap-3">
+        {hasGoogleClientId() ? (
+          <div ref={buttonRef} />
+        ) : (
+          <ErrorState message="Google Sign-In is nog niet geconfigureerd (ontbrekende Client ID)." />
+        )}
+        {authError && <ErrorState message={authError} />}
+      </div>
     </div>
   )
 }

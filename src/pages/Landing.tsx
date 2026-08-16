@@ -59,17 +59,17 @@ const FEATURES: { icon: ReactNode; title: string; body: string }[] = [
   {
     icon: <DeviceIcon />,
     title: 'Altijd binnen handbereik',
-    body: 'Installeer Fitness Log als app op je telefoon. Werkt offline, geen appstore nodig, geen account bij een derde partij.',
+    body: 'Installeer Fitness Log als app op je telefoon. Werkt offline, geen appstore nodig — direct vanuit je browser.',
   },
 ]
 
 export function Landing() {
-  const { session } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (session) navigate('/app', { replace: true })
-  }, [session, navigate])
+    if (user) navigate('/app', { replace: true })
+  }, [user, navigate])
 
   return (
     <div className="min-h-screen">

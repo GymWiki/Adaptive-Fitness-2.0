@@ -13,7 +13,7 @@ export function AuthErrorBanner() {
     >
       <span className="text-danger">Inloggen mislukt:</span> {authError}.{' '}
       <Link to="/login" onClick={clearAuthError} className="font-semibold underline">
-        Vraag een nieuwe inloglink aan
+        Probeer opnieuw
       </Link>
       <button
         type="button"
