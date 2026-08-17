@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { generateCombinedSchedule } from '../lib/combinedSchedule/generateCombinedSchedule'
 import type { CombinedWeekProgram } from '../lib/combinedSchedule/generateCombinedSchedule'
 import { buildFocusSpecifics } from '../lib/combinedSchedule/buildFocusSpecifics'
@@ -205,9 +205,15 @@ export function PlanGenerator() {
         Stel je primaire focus en randvoorwaarden in — de generator combineert kracht en hardlopen
         in één weekschema, met periodisering en interferentie-spacing.
       </p>
-      <Link to="/app/eigen-schema" className="mt-2 inline-block text-sm font-semibold text-accent hover:underline">
-        Of bouw je eigen schema →
-      </Link>
+
+      <Button
+        variant="secondary"
+        fullWidth
+        className="mt-4"
+        onClick={() => navigate('/app/eigen-schema')}
+      >
+        + Eigen schema maken
+      </Button>
 
       <div className="mt-6 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink-dim">
