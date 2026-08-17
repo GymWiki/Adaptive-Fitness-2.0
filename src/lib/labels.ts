@@ -1,4 +1,4 @@
-import type { Equipment, ExperienceLevel } from './programGenerator'
+import type { Equipment, ExperienceLevel, MuscleGroup } from './programGenerator'
 import type {
   HybridRatio,
   PrimaryFocus,
@@ -19,6 +19,19 @@ export const EXPERIENCE_LABELS: Record<ExperienceLevel, string> = {
   beginner: 'Beginner (< 6 maanden)',
   intermediate: 'Intermediate (6+ maanden)',
   advanced: 'Advanced (1+ jaar, consistent)',
+}
+
+export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
+  chest: 'Borst',
+  back: 'Rug',
+  shoulders: 'Schouders',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  quads: 'Quadriceps',
+  hamstrings: 'Hamstrings',
+  glutes: 'Bilspieren',
+  calves: 'Kuiten',
+  core: 'Core',
 }
 
 export const PRIMARY_FOCUS_LABELS: Record<PrimaryFocus, string> = {

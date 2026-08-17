@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { updateProfile } from '../lib/sheets/profiles'
-import { listExercises, insertExercise } from '../lib/sheets/exercises'
+import { listExercises } from '../lib/sheets/exercises'
 import {
   deleteCustomWorkout,
   insertCustomWorkout,
@@ -15,13 +15,13 @@ import { WEEKDAY_ORDER } from '../lib/customSchedule/types'
 import type { CustomScheduleAssignment, CustomWorkout, CustomWorkoutExercise } from '../lib/customSchedule/types'
 import type { Weekday } from '../lib/combinedSchedule/types'
 import type { Exercise } from '../lib/types'
-import type { ExerciseKind } from '../lib/programGenerator'
 import { formatRepRange, formatRirRange } from '../lib/customSchedule/formatTargets'
 import { WEEKDAY_LABELS } from '../lib/labels'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Input, Select } from '../components/ui/Input'
 import { ErrorState, Spinner } from '../components/ui/States'
+import { ExercisePicker } from '../components/ExercisePicker'
 
 type EditorState = {
   id: string | null
@@ -52,8 +52,6 @@ export function CustomScheduleBuilder() {
 
   const [editor, setEditor] = useState<EditorState | null>(null)
   const [savingWorkout, setSavingWorkout] = useState(false)
-  const [newExerciseName, setNewExerciseName] = useState('')
-  const [newExerciseKind, setNewExerciseKind] = useState<ExerciseKind>('isolation')
 
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [confirmingActivate, setConfirmingActivate] = useState(false)
@@ -92,13 +90,11 @@ export function CustomScheduleBuilder() {
 
   function openNewWorkout() {
     setEditor({ id: null, name: '', exercises: [] })
-    setNewExerciseName('')
     setActionError('')
   }
 
   function openEditWorkout(workout: CustomWorkout) {
     setEditor({ id: workout.id, name: workout.name, exercises: workout.exercises })
-    setNewExerciseName('')
     setActionError('')
   }
 
@@ -106,26 +102,13 @@ export function CustomScheduleBuilder() {
     setEditor(null)
   }
 
-  function addExerciseToEditor(exerciseId: string) {
+  function addExerciseToEditor(exercise: Exercise) {
     if (!editor) return
+    setExercises((prev) => (prev.some((e) => e.id === exercise.id) ? prev : [...prev, exercise]))
     setEditor({
       ...editor,
-      exercises: [...editor.exercises, { exerciseId, sets: 3, restSeconds: '90' }],
+      exercises: [...editor.exercises, { exerciseId: exercise.id, sets: 3, restSeconds: '90' }],
     })
-  }
-
-  async function handleCreateAndAddExercise() {
-    const name = newExerciseName.trim()
-    if (!name || !editor) return
-    setActionError('')
-    try {
-      const created = await insertExercise({ name, kind: newExerciseKind })
-      setExercises((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
-      addExerciseToEditor(created.id)
-      setNewExerciseName('')
-    } catch {
-      setActionError('Oefening aanmaken is mislukt. Probeer opnieuw.')
-    }
   }
 
   function updateEditorExercise(index: number, patch: Partial<CustomWorkoutExercise>) {
@@ -237,17 +220,11 @@ export function CustomScheduleBuilder() {
           {editor ? (
             <WorkoutEditor
               editor={editor}
-              exercises={exercises}
               exerciseById={exerciseById}
-              newExerciseName={newExerciseName}
-              newExerciseKind={newExerciseKind}
               saving={savingWorkout}
               error={actionError}
               onNameChange={(name) => setEditor({ ...editor, name })}
-              onAddExisting={addExerciseToEditor}
-              onNewExerciseNameChange={setNewExerciseName}
-              onNewExerciseKindChange={setNewExerciseKind}
-              onCreateAndAdd={handleCreateAndAddExercise}
+              onAddExercise={addExerciseToEditor}
               onUpdateExercise={updateEditorExercise}
               onRemoveExercise={removeEditorExercise}
               onMoveExercise={moveEditorExercise}
@@ -387,17 +364,11 @@ export function CustomScheduleBuilder() {
 
 function WorkoutEditor({
   editor,
-  exercises,
   exerciseById,
-  newExerciseName,
-  newExerciseKind,
   saving,
   error,
   onNameChange,
-  onAddExisting,
-  onNewExerciseNameChange,
-  onNewExerciseKindChange,
-  onCreateAndAdd,
+  onAddExercise,
   onUpdateExercise,
   onRemoveExercise,
   onMoveExercise,
@@ -405,17 +376,11 @@ function WorkoutEditor({
   onCancel,
 }: {
   editor: EditorState
-  exercises: Exercise[]
   exerciseById: Map<string, Exercise>
-  newExerciseName: string
-  newExerciseKind: ExerciseKind
   saving: boolean
   error: string
   onNameChange: (name: string) => void
-  onAddExisting: (exerciseId: string) => void
-  onNewExerciseNameChange: (name: string) => void
-  onNewExerciseKindChange: (kind: ExerciseKind) => void
-  onCreateAndAdd: () => void
+  onAddExercise: (exercise: Exercise) => void
   onUpdateExercise: (index: number, patch: Partial<CustomWorkoutExercise>) => void
   onRemoveExercise: (index: number) => void
   onMoveExercise: (index: number, direction: -1 | 1) => void
@@ -520,38 +485,8 @@ function WorkoutEditor({
 
       <div className="mt-4 rounded-2xl border border-dashed border-border p-4">
         <p className="text-sm font-semibold text-ink-dim">Oefening toevoegen</p>
-        <Select
-          value=""
-          onChange={(e) => e.target.value && onAddExisting(e.target.value)}
-          className="mt-2"
-        >
-          <option value="">Kies een bestaande oefening...</option>
-          {exercises.map((exercise) => (
-            <option key={exercise.id} value={exercise.id}>
-              {exercise.name}
-            </option>
-          ))}
-        </Select>
-
-        <p className="mt-3 text-xs text-ink-faint">Of maak een nieuwe oefening:</p>
-        <div className="mt-1.5 flex gap-2">
-          <Input
-            value={newExerciseName}
-            onChange={(e) => onNewExerciseNameChange(e.target.value)}
-            placeholder="Naam"
-            className="flex-1"
-          />
-          <Select
-            value={newExerciseKind}
-            onChange={(e) => onNewExerciseKindChange(e.target.value as ExerciseKind)}
-            className="w-36"
-          >
-            <option value="compound">Compound</option>
-            <option value="isolation">Isolatie</option>
-          </Select>
-          <Button size="sm" variant="secondary" onClick={onCreateAndAdd} disabled={!newExerciseName.trim()}>
-            Aanmaken
-          </Button>
+        <div className="mt-2">
+          <ExercisePicker value="" onChange={() => {}} onSelectExercise={onAddExercise} />
         </div>
       </div>
 
