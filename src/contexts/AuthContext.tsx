@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { initGoogleSignIn, disableAutoSelect, onGoogleScriptReady } from '../lib/googleAuth'
 import type { GoogleUser } from '../lib/googleAuth'
-import { getAccessToken, requestSheetsAccess } from '../lib/sheets/sheetsAuth'
+import { clearCachedToken, getAccessToken, requestSheetsAccess } from '../lib/sheets/sheetsAuth'
 import { provisionSpreadsheet } from '../lib/sheets/provisionSpreadsheet'
 import { clearSheetsSession } from '../lib/sheets/sheetsSession'
 import { clearSheetsCache } from '../lib/sheets/sheetsStore'
@@ -106,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function signOut() {
     localStorage.removeItem(STORAGE_KEY)
     disableAutoSelect()
+    clearCachedToken()
     clearSheetsSession()
     clearSheetsCache()
     setUser(null)

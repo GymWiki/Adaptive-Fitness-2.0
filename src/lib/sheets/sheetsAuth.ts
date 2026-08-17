@@ -10,10 +10,31 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 // existing grant, etc.) — without a bound, a caller can hang forever.
 const SILENT_TIMEOUT_MS = 5000
 
+const TOKEN_STORAGE_KEY = 'sheets_access_token'
+
+type CachedToken = { accessToken: string; expiresAt: number }
 type TokenClient = { requestAccessToken: (overrideConfig?: { prompt?: string }) => void }
 
+// Persisted to localStorage (not just kept in memory) so a page reload or a
+// fresh app open reuses the still-valid token instead of hitting the silent
+// request (and its fallback consent button) again every single time — the
+// grant itself already persists on Google's side, this just stops throwing
+// away our own copy of a token that's still good for up to ~an hour.
+function readStoredToken(): CachedToken | null {
+  try {
+    const raw = localStorage.getItem(TOKEN_STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as CachedToken) : null
+  } catch {
+    return null
+  }
+}
+
+function writeStoredToken(token: CachedToken): void {
+  localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(token))
+}
+
 let tokenClient: TokenClient | null = null
-let cachedToken: { accessToken: string; expiresAt: number } | null = null
+let cachedToken: CachedToken | null = readStoredToken()
 let pendingResolve: ((token: string) => void) | null = null
 let pendingReject: ((error: Error) => void) | null = null
 
@@ -34,6 +55,7 @@ function ensureTokenClient(): TokenClient | null {
           accessToken: response.access_token,
           expiresAt: Date.now() + (response.expires_in ?? 3600) * 1000 - 60_000,
         }
+        writeStoredToken(cachedToken)
         pendingResolve?.(response.access_token)
       }
       pendingResolve = null
@@ -101,4 +123,10 @@ export async function getAccessToken(): Promise<string> {
  */
 export function requestSheetsAccess(): Promise<string> {
   return requestToken('consent')
+}
+
+/** Drops the cached token on sign-out, so a different account signing in on the same device never reuses it. */
+export function clearCachedToken(): void {
+  cachedToken = null
+  localStorage.removeItem(TOKEN_STORAGE_KEY)
 }
