@@ -2,18 +2,27 @@ import { useEffect, useMemo, useState } from 'react'
 import { useActiveProgram } from '../hooks/useActiveProgram'
 import { useWorkoutCount } from '../hooks/useWorkoutCount'
 import { computeCycleState } from '../lib/cycleProgress'
+import { WEEKDAY_ORDER } from '../lib/customSchedule/types'
+import { WEEKDAY_LABELS } from '../lib/labels'
 import { DaySlider } from './DaySlider'
 import { DayDetail } from './DayDetail'
 
 export function ActiveProgramPanel() {
-  const { program, loading: programLoading } = useActiveProgram()
+  const { program, loading: programLoading, isCustom, todayIndex } = useActiveProgram()
   const { count, loading: countLoading } = useWorkoutCount()
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
+  // A custom schedule is keyed to real weekdays — "today" recommends itself,
+  // with no across-week done-tracking (see design doc §3). A generated
+  // schedule keeps the existing count-based "next undone day in the cycle".
   const cycleState = useMemo(() => {
-    if (!program || count === null) return null
+    if (!program) return null
+    if (isCustom) {
+      return { recommendedIndex: todayIndex ?? 0, doneInCycle: program.week.map(() => false) }
+    }
+    if (count === null) return null
     return computeCycleState(program.week, count, (slot) => slot.type === 'strength')
-  }, [program, count])
+  }, [program, count, isCustom, todayIndex])
 
   useEffect(() => {
     if (cycleState && selectedIndex === null) {
@@ -24,6 +33,8 @@ export function ActiveProgramPanel() {
   if (programLoading || countLoading || !program || !cycleState || selectedIndex === null) {
     return null
   }
+
+  const dayLabels = isCustom ? WEEKDAY_ORDER.map((day) => WEEKDAY_LABELS[day]) : undefined
 
   return (
     <div className="mb-8">
@@ -40,12 +51,14 @@ export function ActiveProgramPanel() {
           recommendedIndex={cycleState.recommendedIndex}
           doneInCycle={cycleState.doneInCycle}
           onSelect={setSelectedIndex}
+          dayLabels={dayLabels}
         />
       </div>
       <div className="mt-4">
         <DayDetail
           day={program.week[selectedIndex]}
           isDone={cycleState.doneInCycle[selectedIndex]}
+          dayLabel={dayLabels?.[selectedIndex]}
         />
       </div>
     </div>

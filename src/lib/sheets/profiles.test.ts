@@ -23,6 +23,7 @@ describe('toProfile', () => {
         equipment: 'full_gym',
         experience_level: 'intermediate',
         onboarding_completed: 'true',
+        schedule_source: 'custom',
       }),
     ).toEqual({
       id: 'u1',
@@ -43,6 +44,7 @@ describe('toProfile', () => {
       equipment: 'full_gym',
       experience_level: 'intermediate',
       onboarding_completed: true,
+      schedule_source: 'custom',
     })
   })
 
@@ -66,10 +68,12 @@ describe('toProfile', () => {
       equipment: '',
       experience_level: '',
       onboarding_completed: '',
+      schedule_source: '',
     })
     expect(result.available_days).toEqual([])
     expect(result.primary_focus).toBeNull()
     expect(result.onboarding_completed).toBe(false)
+    expect(result.schedule_source).toBeNull()
   })
 })
 

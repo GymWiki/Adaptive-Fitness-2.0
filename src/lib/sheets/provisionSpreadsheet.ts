@@ -1,5 +1,7 @@
 import {
+  addTabs,
   appendRow,
+  appendRows,
   createSpreadsheet,
   findSpreadsheetByName,
   getSheetIdByTab,
@@ -8,7 +10,9 @@ import {
 } from './sheetsClient'
 import { setSheetsSession } from './sheetsSession'
 import { missingColumns } from './headerMigration'
+import { missingWeekdayRows } from './ensureWeekdayRows'
 import { columnLetter } from './rowMapping'
+import { WEEKDAY_ORDER } from '../customSchedule/types'
 import type { GoogleUser } from '../googleAuth'
 
 const SPREADSHEET_NAME = 'Fitness Log — Data'
@@ -33,6 +37,7 @@ export const TAB_HEADERS = {
     'equipment',
     'experience_level',
     'onboarding_completed',
+    'schedule_source',
   ],
   exercises: [
     'id',
@@ -46,6 +51,8 @@ export const TAB_HEADERS = {
   ],
   workouts: ['id', 'name', 'performed_at', 'created_at'],
   workout_sets: ['id', 'workout_id', 'exercise_id', 'set_order', 'weight_kg', 'reps', 'rir', 'created_at'],
+  custom_workouts: ['id', 'name', 'exercises_json'],
+  custom_schedule: ['id', 'workout_id'],
 } as const
 
 export type TabName = keyof typeof TAB_HEADERS
@@ -95,9 +102,34 @@ async function seedNewSpreadsheet(spreadsheetId: string, user: GoogleUser): Prom
 
   await appendRow(spreadsheetId, 'profiles', [
     user.id,
-    ...Array(TAB_HEADERS.profiles.length - 2).fill(''),
+    ...Array(TAB_HEADERS.profiles.length - 3).fill(''),
     'false',
+    '',
   ])
+
+  await appendRows(
+    spreadsheetId,
+    'custom_schedule',
+    WEEKDAY_ORDER.map((weekday) => [weekday, '']),
+  )
+}
+
+/**
+ * Creates any whole tabs the schema has since gained (e.g. custom_workouts,
+ * custom_schedule) on an already-provisioned spreadsheet that predates them
+ * — ensureHeaderColumns only patches columns *within* a tab, so a brand-new
+ * tab needs to exist first, header row included, before that can run.
+ */
+async function ensureTabsExist(spreadsheetId: string): Promise<Record<string, number>> {
+  const sheetIdByTab = await getSheetIdByTab(spreadsheetId)
+  const missingTabs = Object.keys(TAB_HEADERS).filter((tab) => !(tab in sheetIdByTab))
+  if (missingTabs.length === 0) return sheetIdByTab
+
+  const newSheetIds = await addTabs(spreadsheetId, missingTabs)
+  for (const tab of missingTabs) {
+    await appendRow(spreadsheetId, tab, [...TAB_HEADERS[tab as TabName]])
+  }
+  return { ...sheetIdByTab, ...newSheetIds }
 }
 
 /**
@@ -119,6 +151,24 @@ async function ensureHeaderColumns(spreadsheetId: string): Promise<void> {
 }
 
 /**
+ * Patches an already-provisioned spreadsheet's `custom_schedule` tab to
+ * include a row for every weekday — sheets provisioned before this feature
+ * existed have no rows there yet. Existing rows/assignments untouched.
+ */
+async function ensureCustomScheduleRows(spreadsheetId: string): Promise<void> {
+  const [, ...dataRows] = await getValues(spreadsheetId, 'custom_schedule')
+  const existingIds = dataRows.map((row) => row[0]).filter((id): id is string => !!id)
+  const missing = missingWeekdayRows(existingIds)
+  if (missing.length === 0) return
+
+  await appendRows(
+    spreadsheetId,
+    'custom_schedule',
+    missing.map((weekday) => [weekday, '']),
+  )
+}
+
+/**
  * Resolves this user's spreadsheet — cached ID, then a Drive search by
  * name, then create + seed a new one — and populates the in-memory sheets
  * session so sheetsTable calls can proceed. See
@@ -129,8 +179,9 @@ export async function provisionSpreadsheet(user: GoogleUser): Promise<void> {
   const cachedId = localStorage.getItem(key)
 
   if (cachedId) {
+    const sheetIdByTab = await ensureTabsExist(cachedId)
     await ensureHeaderColumns(cachedId)
-    const sheetIdByTab = await getSheetIdByTab(cachedId)
+    await ensureCustomScheduleRows(cachedId)
     setSheetsSession({ spreadsheetId: cachedId, sheetIdByTab })
     return
   }
@@ -138,8 +189,9 @@ export async function provisionSpreadsheet(user: GoogleUser): Promise<void> {
   const foundId = await findSpreadsheetByName(SPREADSHEET_NAME)
   if (foundId) {
     localStorage.setItem(key, foundId)
+    const sheetIdByTab = await ensureTabsExist(foundId)
     await ensureHeaderColumns(foundId)
-    const sheetIdByTab = await getSheetIdByTab(foundId)
+    await ensureCustomScheduleRows(foundId)
     setSheetsSession({ spreadsheetId: foundId, sheetIdByTab })
     return
   }

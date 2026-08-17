@@ -35,6 +35,13 @@ export function Dashboard() {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <ActiveProgramPanel />
 
+      <Link
+        to="/app/eigen-schema"
+        className="mb-8 -mt-4 block text-sm font-semibold text-accent hover:underline"
+      >
+        Eigen schema bouwen →
+      </Link>
+
       <div className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold">Jouw workouts</h1>
         <Link to="/app/log">

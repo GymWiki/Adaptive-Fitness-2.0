@@ -65,6 +65,25 @@ export async function deleteRow(spreadsheetId: string, sheetId: number, rowIndex
   })
 }
 
+/** Adds new empty tabs to an existing spreadsheet, returning their new sheetIds. */
+export async function addTabs(spreadsheetId: string, tabTitles: string[]): Promise<Record<string, number>> {
+  if (tabTitles.length === 0) return {}
+  const data = await authedFetch<{ replies: Array<{ addSheet: { properties: { title: string; sheetId: number } } }> }>(
+    `${SHEETS_BASE}/${spreadsheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        requests: tabTitles.map((title) => ({ addSheet: { properties: { title } } })),
+      }),
+    },
+  )
+  const sheetIdByTab: Record<string, number> = {}
+  for (const reply of data.replies) {
+    sheetIdByTab[reply.addSheet.properties.title] = reply.addSheet.properties.sheetId
+  }
+  return sheetIdByTab
+}
+
 export type NewSpreadsheet = { spreadsheetId: string; sheetIdByTab: Record<string, number> }
 
 /** Creates a spreadsheet with one sheet (tab) per name in `tabTitles`, each initially empty. */

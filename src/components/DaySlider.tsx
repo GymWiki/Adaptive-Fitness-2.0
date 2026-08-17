@@ -48,9 +48,11 @@ type Props = {
   recommendedIndex: number
   doneInCycle: boolean[]
   onSelect: (index: number) => void
+  /** Real weekday names (Ma, Di, ...) shown above each chip — only for a custom schedule, where the same workout can repeat across days. */
+  dayLabels?: string[]
 }
 
-export function DaySlider({ week, selectedIndex, recommendedIndex, doneInCycle, onSelect }: Props) {
+export function DaySlider({ week, selectedIndex, recommendedIndex, doneInCycle, onSelect, dayLabels }: Props) {
   const chipRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   useEffect(() => {
@@ -99,6 +101,11 @@ export function DaySlider({ week, selectedIndex, recommendedIndex, doneInCycle, 
                   isSelected ? 'bg-accent-ink' : 'bg-accent'
                 }`}
               />
+            )}
+            {dayLabels && (
+              <span className="text-[10px] font-bold uppercase tracking-wide opacity-70">
+                {dayLabels[index]}
+              </span>
             )}
             {dayIcon(slot)}
             <span className="line-clamp-2 text-[11px] font-semibold leading-tight">

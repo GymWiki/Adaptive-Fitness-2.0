@@ -29,6 +29,7 @@ export function toProfile(row: SheetRow): Profile {
     equipment: (row.equipment || null) as Profile['equipment'],
     experience_level: (row.experience_level || null) as Profile['experience_level'],
     onboarding_completed: row.onboarding_completed === 'true',
+    schedule_source: (row.schedule_source || null) as Profile['schedule_source'],
   }
 }
 
@@ -55,6 +56,7 @@ export function fromProfilePatch(patch: Partial<Profile>): SheetRow {
   if ('equipment' in patch) row.equipment = patch.equipment ?? ''
   if ('experience_level' in patch) row.experience_level = patch.experience_level ?? ''
   if ('onboarding_completed' in patch) row.onboarding_completed = String(patch.onboarding_completed ?? false)
+  if ('schedule_source' in patch) row.schedule_source = patch.schedule_source ?? ''
   return row
 }
 

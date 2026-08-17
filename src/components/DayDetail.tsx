@@ -6,14 +6,17 @@ import { Card } from './ui/Card'
 type Props = {
   day: CombinedDaySlot
   isDone: boolean
+  /** Real weekday name (Maandag, ...) — only passed for a custom schedule. */
+  dayLabel?: string
 }
 
-export function DayDetail({ day, isDone }: Props) {
+export function DayDetail({ day, isDone, dayLabel }: Props) {
   const navigate = useNavigate()
 
   if (day.type === 'rest') {
     return (
       <Card className="text-center">
+        {dayLabel && <p className="text-xs font-semibold text-ink-faint">{dayLabel}</p>}
         <p className="font-display text-lg font-bold text-ink">Rustdag</p>
         <p className="mt-1 text-sm text-ink-dim">
           Geen training vandaag — je spieren herstellen en groeien juist nu.
@@ -26,6 +29,7 @@ export function DayDetail({ day, isDone }: Props) {
     const { session } = day
     return (
       <Card>
+        {dayLabel && <p className="text-xs font-semibold text-ink-faint">{dayLabel}</p>}
         <div className="flex items-center justify-between">
           <p className="font-display text-lg font-bold text-ink">{session.label}</p>
           <span className="rounded-lg bg-surface-2 px-2 py-1 text-xs font-semibold text-ink-dim">
@@ -44,6 +48,7 @@ export function DayDetail({ day, isDone }: Props) {
 
   return (
     <Card>
+      {dayLabel && <p className="text-xs font-semibold text-ink-faint">{dayLabel}</p>}
       <p className="font-display text-lg font-bold text-ink">{trainingDay.label}</p>
       <ul className="mt-4 flex flex-col gap-2">
         {trainingDay.exercises.map((exercise, index) => (

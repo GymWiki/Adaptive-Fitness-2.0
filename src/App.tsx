@@ -14,6 +14,7 @@ import { LogWorkout } from './pages/LogWorkout'
 import { GuidedWorkout } from './pages/GuidedWorkout'
 import { History } from './pages/History'
 import { PlanGenerator } from './pages/PlanGenerator'
+import { CustomScheduleBuilder } from './pages/CustomScheduleBuilder'
 import { Progress } from './pages/Progress'
 
 function AppLayout({ children }: { children: ReactNode }) {
@@ -74,6 +75,14 @@ function App() {
                   element={
                     <AppLayout>
                       <PlanGenerator />
+                    </AppLayout>
+                  }
+                />
+                <Route
+                  path="/app/eigen-schema"
+                  element={
+                    <AppLayout>
+                      <CustomScheduleBuilder />
                     </AppLayout>
                   }
                 />

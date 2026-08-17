@@ -45,4 +45,5 @@ export type Profile = {
   equipment: 'full_gym' | 'home_dumbbells' | 'bodyweight_only' | null
   experience_level: 'beginner' | 'intermediate' | 'advanced' | null
   onboarding_completed: boolean
+  schedule_source: 'generated' | 'custom' | null
 }
