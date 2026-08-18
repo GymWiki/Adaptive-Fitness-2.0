@@ -4,12 +4,12 @@ import { countWorkouts } from '../lib/sheets/workouts'
 
 /** Total number of workouts the user has ever logged — the cycle's only clock. */
 export function useWorkoutCount() {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const [count, setCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user || !sheetsReady) {
+    if (!user) {
       setCount(null)
       setLoading(Boolean(user))
       return
@@ -27,7 +27,7 @@ export function useWorkoutCount() {
     return () => {
       cancelled = true
     }
-  }, [user, sheetsReady])
+  }, [user])
 
   return { count, loading }
 }

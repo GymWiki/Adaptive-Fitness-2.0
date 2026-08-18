@@ -188,7 +188,7 @@ export function CustomScheduleBuilder() {
     setActivating(true)
     setActionError('')
     try {
-      await updateProfile(user.id, { schedule_source: 'custom' })
+      await updateProfile(user.uid, { schedule_source: 'custom' })
     } catch {
       setActionError('Activeren is mislukt. Probeer opnieuw.')
       setActivating(false)

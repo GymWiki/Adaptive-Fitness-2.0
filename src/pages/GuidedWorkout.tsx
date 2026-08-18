@@ -22,7 +22,7 @@ import { ErrorState, Spinner } from '../components/ui/States'
 type RouterState = { workoutName?: string; exercises?: PlannedExercise[] } | null
 
 export function GuidedWorkout() {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const { workoutName, exercises: plannedExercises } = (location.state as RouterState) ?? {}
@@ -31,7 +31,7 @@ export function GuidedWorkout() {
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!user || !sheetsReady || !plannedExercises) return
+    if (!user || !plannedExercises) return
     let cancelled = false
     setError(false)
     setResolved(null)
@@ -53,7 +53,7 @@ export function GuidedWorkout() {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, sheetsReady, plannedExercises])
+  }, [user, plannedExercises])
 
   if (!plannedExercises || plannedExercises.length === 0) {
     navigate('/app', { replace: true })

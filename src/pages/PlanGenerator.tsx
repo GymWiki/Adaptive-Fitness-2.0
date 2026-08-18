@@ -174,7 +174,7 @@ export function PlanGenerator() {
     const s = generatedParams.specifics
 
     try {
-      await updateProfile(user.id, {
+      await updateProfile(user.uid, {
         primary_focus: generatedParams.primaryFocus,
         strength_focus_zone: s.primaryFocus === 'strength' ? s.strengthFocusZone : null,
         hybrid_ratio: s.primaryFocus === 'hybrid' ? s.hybridRatio : null,

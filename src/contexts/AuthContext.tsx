@@ -1,132 +1,76 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { initGoogleSignIn, disableAutoSelect, onGoogleScriptReady } from '../lib/googleAuth'
-import type { GoogleUser } from '../lib/googleAuth'
-import { clearCachedToken, getAccessToken, requestSheetsAccess } from '../lib/sheets/sheetsAuth'
-import { provisionSpreadsheet } from '../lib/sheets/provisionSpreadsheet'
-import { clearSheetsSession } from '../lib/sheets/sheetsSession'
-import { clearSheetsCache } from '../lib/sheets/sheetsStore'
-
-const STORAGE_KEY = 'google_identity'
+import {
+  GoogleAuthProvider,
+  browserLocalPersistence,
+  getRedirectResult,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithRedirect,
+  signOut as firebaseSignOut,
+  type User,
+} from 'firebase/auth'
+import { auth } from '../lib/firebase/firebaseClient'
 
 type AuthContextValue = {
-  user: GoogleUser | null
+  user: User | null
+  /** True until the first onAuthStateChanged callback fires (session restore from IndexedDB). */
   loading: boolean
-  /** True once this user's spreadsheet is resolved and the sheets session is ready for data calls. */
-  sheetsReady: boolean
-  /** True when the silent attempt failed and an explicit, user-clicked consent grant is needed. */
-  needsSheetsConsent: boolean
-  grantingSheetsAccess: boolean
-  /** Must be called synchronously from a real click — see sheetsAuth.ts's requestSheetsAccess. */
-  grantSheetsAccess: () => void
   authError: string | null
   clearAuthError: () => void
+  /** Must be called from a real click — see index.html / Login.tsx. */
+  signInWithGoogle: () => void
   signOut: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-function readStoredUser(): GoogleUser | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as GoogleUser) : null
-  } catch {
-    return null
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<GoogleUser | null>(() => readStoredUser())
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState<string | null>(null)
-  const [sheetsReady, setSheetsReady] = useState(false)
-  const [needsSheetsConsent, setNeedsSheetsConsent] = useState(false)
-  const [grantingSheetsAccess, setGrantingSheetsAccess] = useState(false)
 
   useEffect(() => {
-    return onGoogleScriptReady(() => {
-      initGoogleSignIn(
-        (signedInUser) => {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(signedInUser))
-          setUser(signedInUser)
-          setAuthError(null)
-        },
-        () => setAuthError('Inloggen met Google is mislukt. Probeer opnieuw.'),
-      )
-    })
-  }, [])
-
-  // Tries ONLY the silent path automatically — a real consent popup must
-  // come from a direct user click (see grantSheetsAccess below), never from
-  // here, or browsers block it and the request hangs. If silent fails
-  // (bounded, see sheetsAuth.ts), needsSheetsConsent asks the UI to show a
-  // button instead of leaving the app stuck loading forever.
-  useEffect(() => {
-    if (!user) {
-      setSheetsReady(false)
-      setNeedsSheetsConsent(false)
+    if (!auth) {
+      setLoading(false)
       return
     }
 
-    let cancelled = false
-    setSheetsReady(false)
-    setNeedsSheetsConsent(false)
-    const currentUser = user
+    setPersistence(auth, browserLocalPersistence).catch(() => {})
 
-    getAccessToken()
-      .then(() => provisionSpreadsheet(currentUser))
-      .then(() => {
-        if (!cancelled) setSheetsReady(true)
-      })
-      .catch(() => {
-        if (!cancelled) setNeedsSheetsConsent(true)
-      })
+    // Surfaces a redirect-specific failure (e.g. account-exists-with-
+    // different-credential); onAuthStateChanged below is what actually
+    // resolves the signed-in user once the redirect completes.
+    getRedirectResult(auth).catch(() => {
+      setAuthError('Inloggen met Google is mislukt. Probeer opnieuw.')
+    })
 
-    return () => {
-      cancelled = true
+    return onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser)
+      setLoading(false)
+    })
+  }, [])
+
+  function signInWithGoogle() {
+    if (!auth) {
+      setAuthError('Firebase is nog niet geconfigureerd (ontbrekende environment variables).')
+      return
     }
-  }, [user])
-
-  function grantSheetsAccess() {
-    if (!user) return
-    const currentUser = user
-    setGrantingSheetsAccess(true)
     setAuthError(null)
-
-    requestSheetsAccess()
-      .then(() => provisionSpreadsheet(currentUser))
-      .then(() => {
-        setNeedsSheetsConsent(false)
-        setSheetsReady(true)
-      })
-      .catch(() => {
-        setAuthError('Toegang tot je Google Sheet kon niet worden verkregen. Probeer opnieuw.')
-      })
-      .finally(() => setGrantingSheetsAccess(false))
+    signInWithRedirect(auth, new GoogleAuthProvider())
   }
 
   function signOut() {
-    localStorage.removeItem(STORAGE_KEY)
-    disableAutoSelect()
-    clearCachedToken()
-    clearSheetsSession()
-    clearSheetsCache()
-    setUser(null)
-    setSheetsReady(false)
-    setNeedsSheetsConsent(false)
+    if (auth) firebaseSignOut(auth)
   }
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        // Identity is restored synchronously from localStorage — there's no
-        // network round-trip to wait for, unlike Supabase's getSession().
-        loading: false,
-        sheetsReady,
-        needsSheetsConsent,
-        grantingSheetsAccess,
-        grantSheetsAccess,
+        loading,
         authError,
         clearAuthError: () => setAuthError(null),
+        signInWithGoogle,
         signOut,
       }}
     >

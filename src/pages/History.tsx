@@ -5,17 +5,17 @@ import type { Workout } from '../lib/types'
 import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 
 export function History() {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || !sheetsReady) return
+    if (!user) return
     loadWorkouts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, sheetsReady])
+  }, [user])
 
   async function loadWorkouts() {
     setLoading(true)

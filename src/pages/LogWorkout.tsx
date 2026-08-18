@@ -26,7 +26,7 @@ function emptySet(): DraftSet {
 const RIR_OPTIONS = ['0', '1', '2', '3', '4+']
 
 export function LogWorkout() {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const prefillName = (location.state as { workoutName?: string } | null)?.workoutName ?? ''
@@ -48,7 +48,7 @@ export function LogWorkout() {
   }
 
   async function handleSave() {
-    if (!user || !sheetsReady) return
+    if (!user) return
     const validSets = sets.filter(
       (s) => s.exerciseId && s.weight !== '' && s.reps !== '' && s.rir !== '',
     )

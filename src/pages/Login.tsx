@@ -1,17 +1,10 @@
-import { useEffect, useRef } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { hasGoogleClientId, onGoogleScriptReady, renderGoogleButton } from '../lib/googleAuth'
+import { Button } from '../components/ui/Button'
 import { ErrorState } from '../components/ui/States'
 
 export function Login() {
-  const { user, authError } = useAuth()
-  const buttonRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!buttonRef.current) return
-    return onGoogleScriptReady(() => renderGoogleButton(buttonRef.current!))
-  }, [])
+  const { user, authError, signInWithGoogle } = useAuth()
 
   if (user) return <Navigate to="/app" replace />
 
@@ -24,11 +17,9 @@ export function Login() {
       <p className="mt-2 text-center text-sm text-ink-dim">Log in met je Google-account.</p>
 
       <div className="mt-6 flex flex-col items-center gap-3">
-        {hasGoogleClientId() ? (
-          <div ref={buttonRef} />
-        ) : (
-          <ErrorState message="Google Sign-In is nog niet geconfigureerd (ontbrekende Client ID)." />
-        )}
+        <Button onClick={signInWithGoogle} fullWidth>
+          Inloggen met Google
+        </Button>
         {authError && <ErrorState message={authError} />}
       </div>
     </div>

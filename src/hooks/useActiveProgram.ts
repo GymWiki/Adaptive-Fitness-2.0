@@ -20,7 +20,7 @@ export type ActiveProgramResult = {
 
 /** The user's active schedule, resolved from their profile — either generated or their own custom one. */
 export function useActiveProgram(): ActiveProgramResult {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const { profile, loading: profileLoading } = useProfile()
   const isCustom = profile?.schedule_source === 'custom'
 
@@ -28,7 +28,7 @@ export function useActiveProgram(): ActiveProgramResult {
   const [customLoading, setCustomLoading] = useState(false)
 
   useEffect(() => {
-    if (!isCustom || !user || !sheetsReady) {
+    if (!isCustom || !user) {
       setCustom(null)
       return
     }
@@ -51,7 +51,7 @@ export function useActiveProgram(): ActiveProgramResult {
     return () => {
       cancelled = true
     }
-  }, [isCustom, user, sheetsReady])
+  }, [isCustom, user])
 
   const generatedProgram = useMemo(() => {
     if (isCustom || !isReadyForGeneration(profile)) return null

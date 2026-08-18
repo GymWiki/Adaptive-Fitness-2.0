@@ -203,7 +203,7 @@ export function Onboarding() {
     setError('')
 
     try {
-      await updateProfile(user.id, {
+      await updateProfile(user.uid, {
         display_name: form.displayName.trim() || null,
         weight_kg: form.weightKg ? Number(form.weightKg) : null,
         height_cm: form.heightCm ? Number(form.heightCm) : null,

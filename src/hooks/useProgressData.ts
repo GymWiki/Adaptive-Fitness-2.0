@@ -11,13 +11,13 @@ export type ExerciseHistory = {
 
 /** Every logged set for the current user, grouped by exercise — the input the progress page needs. */
 export function useProgressData() {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const [histories, setHistories] = useState<ExerciseHistory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!user || !sheetsReady) {
+    if (!user) {
       setHistories([])
       setLoading(Boolean(user))
       return
@@ -70,7 +70,7 @@ export function useProgressData() {
     return () => {
       cancelled = true
     }
-  }, [user, sheetsReady])
+  }, [user])
 
   return { histories, loading, error }
 }

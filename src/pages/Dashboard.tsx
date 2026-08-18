@@ -9,16 +9,16 @@ import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
 import { ActiveProgramPanel } from '../components/ActiveProgramPanel'
 
 export function Dashboard() {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const [workouts, setWorkouts] = useState<Workout[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
-    if (!user || !sheetsReady) return
+    if (!user) return
     loadRecentWorkouts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, sheetsReady])
+  }, [user])
 
   async function loadRecentWorkouts() {
     setLoading(true)

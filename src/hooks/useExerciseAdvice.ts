@@ -7,12 +7,12 @@ import type { Exercise } from '../lib/types'
 
 /** Weight/direction advice for one exercise, shared between the advice banner and the guided workout's weight prefill. */
 export function useExerciseAdvice(exercise: Exercise) {
-  const { user, sheetsReady } = useAuth()
+  const { user } = useAuth()
   const [advice, setAdvice] = useState<Advice | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user || !sheetsReady) return
+    if (!user) return
     let cancelled = false
     setLoading(true)
 
@@ -38,7 +38,7 @@ export function useExerciseAdvice(exercise: Exercise) {
     return () => {
       cancelled = true
     }
-  }, [exercise, user, sheetsReady])
+  }, [exercise, user])
 
   return { advice, loading }
 }
